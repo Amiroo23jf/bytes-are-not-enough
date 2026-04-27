@@ -1,0 +1,28 @@
+experiment: fragmentation_transformer
+theorem: "1"
+
+name: B
+M: 3
+K: 2
+W: 3
+# |Y| = 2^M = 8. W = K+1 kills the oracle-residual term so the L_X*-L_Y*
+# gap equals the phase-MI term (Theorem 1's cyclostationarity bound).
+alpha: 0.5
+n_sequence: 2000000
+seeds: [0, 1, 2]
+
+model:
+  n_layers: 4
+  d_embd: 256
+  d_ffn: 1024
+  n_heads: 4
+  init_std: 0.02
+
+train:
+  batch_size: 128
+  lr: 3.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  warmup_steps: 500
+  ce_window: 1000
+  grad_clip: 1.0

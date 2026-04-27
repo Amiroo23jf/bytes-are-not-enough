@@ -1,0 +1,70 @@
+# --- Python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Packaging / build
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Test / lint / type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+htmlcov/
+
+# --- IDEs / editors --------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# --- OS --------------------------------------------------------------------
+.DS_Store
+Thumbs.db
+
+# --- SLURM -----------------------------------------------------------------
+logs/
+outputs/**/run-*.log
+*.slurm.out
+*.slurm.err
+
+# --- Outputs ---------------------------------------------------------------
+# All current paper artifacts under outputs/ are TRACKED for now:
+#   - outputs/fragmentation_ngram/{raw,figures}/...    (~3 MB)
+#   - outputs/fragmentation_transformer/{logs,figures,summary.json}  (~22 MB)
+# The .npz per-seed training logs are 200-300 KB each, so keeping them lets
+# `scripts/plot_fragmentation_transformer.py` regenerate every figure family
+# without retraining.
+#
+# When the compression_benchmarks experiment lands it will produce large
+# binary payloads (compressed files, model checkpoints, audio/image dumps)
+# that are NOT worth carrying in git. Add ignore rules HERE at that point,
+# e.g.:
+#     outputs/compression_benchmarks/raw/**
+#     outputs/compression_benchmarks/checkpoints/**
+#     *.compressed
+#     *.bin.gz
+# Until then, leave outputs/ tracked as-is.
+
+# --- Misc scratch ----------------------------------------------------------
+outputs/scratch/
+outputs/tmp/

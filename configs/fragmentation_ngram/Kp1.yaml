@@ -1,0 +1,27 @@
+experiment: fragmentation_ngram
+theorem: "3.1"
+
+seed: 42
+
+source:
+  V_x: 2                         # binary token alphabet, fixed throughout
+  configurations:                 # (k, M) pairs to run
+    - [1, 2]
+    - [1, 3]
+    - [1, 4]
+    - [2, 2]
+    - [2, 3]
+    - [3, 2]
+
+sampling:
+  n_matrices: 8                   # independent transition matrices per config
+  alpha: 0.5                      # Dirichlet concentration parameter
+  n_sequence: 500000              # length of Y sequence generated per matrix
+
+ngram:
+  K: null                         # if null, K = k + K_offset for each config
+  K_offset: 1                     # K = k + 1 -- one extra Y-symbol of context
+  smoothing_alpha: 0.5            # Laplace smoothing
+
+theory:
+  n_sequence_marginal: 500000     # Y sequence length for empirical marginal estimation
