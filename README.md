@@ -1,4 +1,4 @@
-# theorem_experiments
+# Bytes are not Enough: Tokenization for Efficient Neural Compression
 
 Reproducibility code for the paper. Each experiment family has its own
 sub-package under `experiments/`, its own configs under `configs/`, its own
@@ -11,8 +11,10 @@ script entry points under `scripts/`, and its own output directory under
 core/                 Markov source utilities, theoretical quantities,
                       n-gram baseline (used across all experiments).
 models/               TransformerLM (modality-agnostic LM).
-tokenizers/           Tokenizer registry. Today only bit_fragment;
-                      BPE / LZW will plug in here.
+tokenizer/            Tokenizer registry: bit_fragment (Theorem 1) and
+                      bpe (Theorem 3, greedy/priority encoders).
+                      Singular to avoid clashing with HuggingFace's
+                      `tokenizers` package on import.
 representations/      Decoder + (optional) tokenizer pipeline; turns raw
                       bytes from text/audio/image files into a token id
                       stream for the compression benchmarks.
@@ -35,7 +37,7 @@ logs/                 SLURM stdout / stderr.
 | `fragmentation_ngram` | 3.1 | `configs/fragmentation_ngram/{base,Kp1}.yaml` | `python scripts/run_fragmentation_ngram.py [config]` | (plotting is part of the run) | `outputs/fragmentation_ngram/` |
 | `fragmentation_ngram` (sweep) | 3.1 | sweep parameters hard-coded in the script | `python scripts/sweep_fragmentation_ngram.py` | (plotting is part of the run) | `outputs/fragmentation_ngram/` |
 | `fragmentation_transformer` | 1 | `configs/fragmentation_transformer/{A,B,C}.yaml` | `python scripts/run_fragmentation_transformer.py [--smoke] [configs...]` | `python scripts/plot_fragmentation_transformer.py [A B C]` | `outputs/fragmentation_transformer/` |
-| `tokenization_transformer` | 3 | (placeholder) | (not yet implemented) | (not yet implemented) | (not yet generated) |
+| `tokenization_transformer` | 3 | `configs/tokenization_transformer/{A_greedy,A_priority}.yaml` | `python scripts/run_tokenization_transformer.py [--smoke] [configs...]` | (plotting is part of the run) | `outputs/tokenization_transformer/` |
 | `compression_benchmarks` | -- | (placeholder) | (not yet implemented) | (not yet implemented) | (not yet generated) |
 
 Configs include `experiment:` and `theorem:` header fields so artifacts
