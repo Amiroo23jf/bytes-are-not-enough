@@ -1,0 +1,37 @@
+experiment: tokenization_transformer
+theorem: "3"
+
+name: A_priority
+K: 8
+W: 4
+V: 8
+# Y is binary (V_y = 2), order-K Markov. W is the transformer context length
+# in tokens for both the bit-level Y-LM and the BPE token-level Z-LM, so the
+# Z-LM spans more underlying bits per window once V > 2.
+alpha: 0.5
+n_sequence: 2000000
+seeds: [0, 1, 2]
+
+tokenizer:
+  encoder: priority   # canonical BPE; pair with A_greedy.yaml as a baseline
+  # Subsample Y for fast BPE training. The full Y is still encoded to Z.
+  # Pair statistics for a stationary Markov source converge well below
+  # n_sequence, so 50k bits is plenty for V <= a few hundred.
+  train_bits: 50000
+  chunk_size: 8192
+
+model:
+  n_layers: 4
+  d_embd: 256
+  d_ffn: 1024
+  n_heads: 4
+  init_std: 0.02
+
+train:
+  batch_size: 128
+  lr: 3.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  warmup_steps: 500
+  ce_window: 1000
+  grad_clip: 1.0

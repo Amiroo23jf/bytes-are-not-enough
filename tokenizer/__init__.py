@@ -15,17 +15,23 @@ Use `get_tokenizer(name, **kwargs)` to instantiate by name.
 """
 
 from .bit_fragment import BitFragmentTokenizer
+from .bpe import BPETokenizer
 
 _REGISTRY = {
     "bit_fragment": BitFragmentTokenizer,
+    "bpe": BPETokenizer,
 }
 
 
 def get_tokenizer(name, **kwargs):
     """Instantiate a tokenizer by name.
 
-    Raises KeyError if the name is unknown. Future tokenizers (BPE, LZW) are
+    Raises KeyError if the name is unknown. Future tokenizers (LZW, ...) are
     registered by importing them here and adding to `_REGISTRY`.
+
+    Note: `BPETokenizer` requires an already-trained state, so callers
+    should typically use `BPETokenizer.train(sequence, vocab_size, ...)` or
+    `BPETokenizer.load(path)` rather than `get_tokenizer("bpe", ...)`.
     """
     if name not in _REGISTRY:
         raise KeyError(f"Unknown tokenizer {name!r}. Available: {sorted(_REGISTRY)}")
@@ -37,4 +43,9 @@ def register_tokenizer(name, cls):
     _REGISTRY[name] = cls
 
 
-__all__ = ["BitFragmentTokenizer", "get_tokenizer", "register_tokenizer"]
+__all__ = [
+    "BitFragmentTokenizer",
+    "BPETokenizer",
+    "get_tokenizer",
+    "register_tokenizer",
+]
