@@ -7,7 +7,9 @@ data:
   vocab_size: null
 
 train:
-  batch_size: 128
+  batch_size: 1024
+  seq_len: 16
+  seeds: [0, 1, 2]
   residual: null
   lr: 3.0e-4
   weight_decay: 0.01

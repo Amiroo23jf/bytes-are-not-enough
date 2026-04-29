@@ -18,6 +18,8 @@ data:
 # Reserved for batching n_streams * batch_size + residual (not used in phase 1).
 train:
   batch_size: 128
+  seq_len: 16
+  seeds: [0, 1, 2]
   residual: null
   lr: 3.0e-4
   weight_decay: 0.01

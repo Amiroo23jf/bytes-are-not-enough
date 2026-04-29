@@ -1,0 +1,29 @@
+experiment: text_transformer
+theorem: "--"
+
+name: tokens_enwik8-1m
+data:
+  path: data/text/enwik8-1m
+  vocab_size: 16000
+  train_num_segments: 40
+  encode_chunk_bytes: 5000000
+  encode_batch_segments: 4
+
+train:
+  batch_size: 1024
+  seq_len: 16
+  seeds: [0]
+  residual: null
+  lr: 3.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  warmup_steps: 500
+  ce_window: 1000
+  grad_clip: 1.0
+
+model:
+  n_layers: 4
+  d_embd: 256
+  d_ffn: 1024
+  n_heads: 4
+  init_std: 0.02
