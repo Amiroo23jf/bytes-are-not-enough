@@ -40,6 +40,7 @@ logs/                 SLURM stdout / stderr.
 | `fragmentation_ngram` (sweep) | 3.1 | sweep parameters hard-coded in the script | `python scripts/sweep_fragmentation_ngram.py` | (plotting is part of the run) | `outputs/fragmentation_ngram/` |
 | `fragmentation_transformer` | 1 | `configs/fragmentation_transformer/{A,B,C}.yaml` | `python scripts/run_fragmentation_transformer.py [--smoke] [configs...]` | `python scripts/plot_fragmentation_transformer.py [A B C]` | `outputs/fragmentation_transformer/` |
 | `tokenization_transformer` | 3 | `configs/tokenization_transformer/{A_greedy,A_priority}.yaml` | `python scripts/run_tokenization_transformer.py [--smoke] [configs...]` | (plotting is part of the run) | `outputs/tokenization_transformer/` |
+| `text_transformer` | -- | `configs/text_transformer/{base,bytes_enwik8,tokens_enwik8}.yaml` | `python scripts/run_text_transformer.py [--smoke] [configs...]` | (not yet) | `outputs/text_transformer/` |
 | `compression_benchmarks` | -- | (placeholder) | (not yet implemented) | (not yet implemented) | (not yet generated) |
 
 Configs include `experiment:` and `theorem:` header fields so artifacts

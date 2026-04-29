@@ -1,0 +1,35 @@
+# Text corpus LM experiment (phase 1 prepares numpy sequences only).
+# vocab_size: omit or null or 256 → raw bytes (uint8). Any other int → ByteLevel BPE + frequency remap.
+# Outputs: outputs/text_transformer/<stem>_bytes/ or .../<stem>_v<vocab>/
+
+experiment: text_transformer
+theorem: "--"
+
+name: base
+data:
+  path: data/text/enwik8
+  vocab_size: null
+  # Used only when vocab_size is not null/256 (token mode):
+  train_sample_size: null
+  train_num_segments: 40
+  encode_chunk_bytes: 5000000
+  encode_batch_segments: 4
+
+# Reserved for batching n_streams * batch_size + residual (not used in phase 1).
+train:
+  batch_size: 128
+  residual: null
+  lr: 3.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  warmup_steps: 500
+  ce_window: 1000
+  grad_clip: 1.0
+
+# Same shape as tokenization_transformer; unused until training lands.
+model:
+  n_layers: 4
+  d_embd: 256
+  d_ffn: 1024
+  n_heads: 4
+  init_std: 0.02
