@@ -18,7 +18,9 @@ tokenizer/            Tokenizer registry: bit_fragment (Theorem 1) and
 representations/      Decoder + (optional) tokenizer pipeline; turns raw
                       bytes from text/audio/image files into a token id
                       stream for the compression benchmarks.
-datasets/             Modality-specific dataset loaders (placeholder).
+datasets/             Modality-specific loaders; ``text_pipeline`` (raw bytes
+                      or ByteLevel-BPE + frequency remap) writes under
+                      ``outputs/datasets/<stem>/``. See ``data/README.md``.
 compressors/          Compressor ABC + sub-packages for each codec.
                       External codecs (EDPC, TRACE) are vendored under
                       compressors/<name>/upstream/, never as submodules.
