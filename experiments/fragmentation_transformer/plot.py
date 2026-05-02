@@ -1,21 +1,28 @@
 """Plotting for the Theorem 1 transformer experiment.
 
 Produces two figure families from per-seed logs:
-  * main/thm1_transformer_{cfg}.{pdf,png}        -- x-axis = Y-symbols processed
-  * appendix/thm1_transformer_{cfg}_grad.{pdf,png} -- x-axis = gradient updates
+  * main -- x-axis = source symbols processed
+  * appendix -- x-axis = gradient steps
 
-Each plot shows the Y-model and X-model smoothed last-position loss (bits per
-Y-symbol) with +/- 1 std bands over seeds, and the two theoretical asymptotes
-L_Y* and L_X* as horizontal dashed lines.
+Each plot shows smoothed last-position loss (mean ± std over seeds) for the
+source-Y and source-X models, and theoretical asymptotes. Default axis labels
+and legend entries follow the paper notation (see ``DEFAULT_*`` constants).
 """
 
 import os
+from tracemalloc import start
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 COLOR_Y = "#378ADD"
 COLOR_X = "#D85A30"
+
+# Default axis labels for plot_configs (override via xlabel_main=..., etc.).
+DEFAULT_XLABEL_MAIN = "Source symbols processed"
+DEFAULT_YLABEL_MAIN = "Loss (bits per source symbol)"
+DEFAULT_XLABEL_APPENDIX = "Gradient steps"
+DEFAULT_YLABEL_APPENDIX = DEFAULT_YLABEL_MAIN
 
 
 def _sliding_mean(x, W):
@@ -45,8 +52,35 @@ def _plot_one(ax, x_axis, mean, std, color, label):
     ax.fill_between(x_axis, mean - std, mean + std, color=color, alpha=0.2)
 
 
+def _default_panel_title(d):
+    return (
+        f"Config {d['name']}: M={d['M']}, K={d['K']}, W={d['W']}, "
+        f"$\\alpha$={d['alpha']}"
+    )
+
+
+def _default_legend_y(d):
+    return rf"Source ($\mathcal{{Y}}$), $w={d['W']}$"
+
+
+def _default_legend_x(d):
+    return rf"Source ($\mathcal{{X}}$), $Mw={d['M'] * d['W']}$"
+
+
+def _default_legend_L_Y(d):
+    return r"$\mathcal{L}_Y(w)$"
+
+
+def _default_legend_L_X(d):
+    return r"$\mathcal{L}_X^{\mathrm{frag}}(Mw)$"
+
+
 def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
-                 xscale="log"):
+                 xscale="log", title_fn=None, appendix_title_fn=None,
+                 xlabel_main=None, ylabel_main=None,
+                 xlabel_appendix=None, ylabel_appendix=None,
+                 legend_y_fn=None, legend_x_fn=None,
+                 legend_L_Y_fn=None, legend_L_X_fn=None):
     """Plot main (x = Y-symbols) and appendix (x = grad updates) figures.
 
     `all_cfg_data` is a list of dicts, one per config, with:
@@ -58,7 +92,28 @@ def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
 
     `xscale` is passed to `ax.set_xscale` for both figures (e.g. "log" or
     "linear").
+
+    `title_fn` and `appendix_title_fn` are optional callables ``cfg_dict ->
+    str`` for panel titles; defaults match the original formatting.
+
+    Axis labels default to ``DEFAULT_XLABEL_MAIN``, ``DEFAULT_YLABEL_MAIN``,
+    ``DEFAULT_XLABEL_APPENDIX``, ``DEFAULT_YLABEL_APPENDIX``; pass overrides to
+    customize.
+
+    Legend entries use callables ``cfg_dict -> str``: ``legend_y_fn`` /
+    ``legend_x_fn`` for the two model curves, ``legend_L_Y_fn`` /
+    ``legend_L_X_fn`` for the horizontal asymptotes.
     """
+    title_main = title_fn or _default_panel_title
+    title_app = appendix_title_fn if appendix_title_fn is not None else title_main
+    xlab_m = xlabel_main if xlabel_main is not None else DEFAULT_XLABEL_MAIN
+    ylab_m = ylabel_main if ylabel_main is not None else DEFAULT_YLABEL_MAIN
+    xlab_a = xlabel_appendix if xlabel_appendix is not None else DEFAULT_XLABEL_APPENDIX
+    ylab_a = ylabel_appendix if ylabel_appendix is not None else DEFAULT_YLABEL_APPENDIX
+    leg_y = legend_y_fn or _default_legend_y
+    leg_x = legend_x_fn or _default_legend_x
+    leg_LY = legend_L_Y_fn or _default_legend_L_Y
+    leg_LX = legend_L_X_fn or _default_legend_L_X
     os.makedirs(save_dir_main, exist_ok=True)
     os.makedirs(save_dir_appendix, exist_ok=True)
 
@@ -71,24 +126,21 @@ def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
         ce_w = d["ce_window"]
         y_mean, y_std, _ = _aggregate_seeds(d["y_per_symbol_seeds"], ce_w)
         x_mean, x_std, _ = _aggregate_seeds(d["x_per_symbol_seeds"], ce_w)
-        S_Y = len(y_mean)
-        x_axis = np.arange(1, S_Y + 1)
-        _plot_one(ax, x_axis, y_mean, y_std, COLOR_Y,
-                  f"Y-model (ctx W={d['W']})")
-        _plot_one(ax, x_axis, x_mean, x_std, COLOR_X,
-                  f"X-model (ctx M*W={d['M'] * d['W']})")
+        start_idx = 100
+        S_X = len(x_mean)
+        x_axis = np.arange(start_idx + 1, S_X + 1)
+        _plot_one(ax, x_axis, y_mean[start_idx:S_X], y_std[start_idx:S_X], COLOR_Y, leg_y(d))
+        _plot_one(ax, x_axis, x_mean[start_idx:S_X], x_std[start_idx:S_X], COLOR_X, leg_x(d))
         ax.axhline(d["L_Y_star"], color=COLOR_Y, linestyle="--",
-                   linewidth=1.1, label=r"$L_Y^\star$")
+                   linewidth=1.1, label=leg_LY(d))
         ax.axhline(d["L_X_star"], color=COLOR_X, linestyle="--",
-                   linewidth=1.1, label=r"$L_X^\star$")
+                   linewidth=1.1, label=leg_LX(d))
         ax.set_xscale(xscale)
-        ax.set_xlabel("Y-symbols processed", fontsize=11)
-        ax.set_ylabel("bits per Y-symbol", fontsize=11)
-        ax.set_title(
-            f"Config {d['name']}: M={d['M']}, K={d['K']}, W={d['W']}, "
-            f"$\\alpha$={d['alpha']}",
-            fontsize=11,
-        )
+        ax.set_xlabel(xlab_m, fontsize=11)
+        ax.set_ylabel(ylab_m, fontsize=11)
+        _tit = title_main(d)
+        if _tit:
+            ax.set_title(_tit, fontsize=11)
         ax.grid(True, alpha=0.25)
         ax.tick_params(labelsize=9)
         ax.legend(fontsize=8, loc="upper right")
@@ -108,37 +160,36 @@ def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
         M = d["M"]
         # Y-model: 1 update per Y-symbol. x-axis = 1..S_Y.
         y_mean, y_std, _ = _aggregate_seeds(d["y_per_symbol_seeds"], ce_w)
+        start_idx = 100
         S_Y = len(y_mean)
-        y_x = np.arange(1, S_Y + 1)
+        y_x = np.arange(start_idx + 1, S_Y + 1)
         # X-model: M updates per Y-symbol. Smooth the per-bit losses in bits,
         # then plot against x-axis = 1..S_X.
         x_bit_mean, x_bit_std, _ = _aggregate_seeds(d["x_per_bit_seeds"], ce_w * M)
         S_X = len(x_bit_mean)
-        x_x = np.arange(1, S_X + 1)
+        x_x = np.arange(start_idx + 1, S_X + 1)
 
         # Both curves must be in bits per Y-symbol on the y-axis. Multiply the
         # smoothed per-bit X-curve by M to put it in the same units.
-        ax.plot(y_x, y_mean, color=COLOR_Y, linewidth=1.5,
-                label=f"Y-model (ctx W={d['W']})")
-        ax.fill_between(y_x, y_mean - y_std, y_mean + y_std,
+        ax.plot(y_x, y_mean[start_idx:S_Y], color=COLOR_Y, linewidth=1.5,
+                label=leg_y(d))
+        ax.fill_between(y_x, y_mean[start_idx:S_Y] - y_std[start_idx:S_Y], y_mean[start_idx:S_Y] + y_std[start_idx:S_Y],
                         color=COLOR_Y, alpha=0.2)
-        ax.plot(x_x, x_bit_mean * M, color=COLOR_X, linewidth=1.5,
-                label=f"X-model (ctx M*W={d['M'] * d['W']})")
-        ax.fill_between(x_x, (x_bit_mean - x_bit_std) * M,
-                        (x_bit_mean + x_bit_std) * M,
+        ax.plot(x_x, x_bit_mean[start_idx:S_X] * M, color=COLOR_X, linewidth=1.5,
+                label=leg_x(d))
+        ax.fill_between(x_x, (x_bit_mean[start_idx:S_X] - x_bit_std[start_idx:S_X]) * M,
+                        (x_bit_mean[start_idx:S_X] + x_bit_std[start_idx:S_X]) * M,
                         color=COLOR_X, alpha=0.2)
         ax.axhline(d["L_Y_star"], color=COLOR_Y, linestyle="--",
-                   linewidth=1.1, label=r"$L_Y^\star$")
+                   linewidth=1.1, label=leg_LY(d))
         ax.axhline(d["L_X_star"], color=COLOR_X, linestyle="--",
-                   linewidth=1.1, label=r"$L_X^\star$")
+                   linewidth=1.1, label=leg_LX(d))
         ax.set_xscale(xscale)
-        ax.set_xlabel("gradient updates", fontsize=11)
-        ax.set_ylabel("bits per Y-symbol", fontsize=11)
-        ax.set_title(
-            f"Config {d['name']}: M={d['M']}, K={d['K']}, W={d['W']}, "
-            f"$\\alpha$={d['alpha']}",
-            fontsize=11,
-        )
+        ax.set_xlabel(xlab_a, fontsize=11)
+        ax.set_ylabel(ylab_a, fontsize=11)
+        _tit = title_app(d)
+        if _tit:
+            ax.set_title(_tit, fontsize=11)
         ax.grid(True, alpha=0.25)
         ax.tick_params(labelsize=9)
         ax.legend(fontsize=8, loc="upper right")

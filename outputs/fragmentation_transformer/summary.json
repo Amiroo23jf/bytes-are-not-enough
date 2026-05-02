@@ -1,30 +1,6 @@
 [
   {
-    "name": "A",
-    "M": 4,
-    "K": 1,
-    "W": 2,
-    "alpha": 0.5,
-    "seeds": [
-      0,
-      1,
-      2
-    ],
-    "ce_window": 1000,
-    "L_Y_star": 3.0185342879356942,
-    "L_X_star": 3.6138248825461203,
-    "y_plateau_mean": 3.0873382886250815,
-    "y_plateau_std": 0.1501553783045542,
-    "x_plateau_mean": 3.7369704246520996,
-    "x_plateau_std": 0.18469878048069957,
-    "gap_theoretical": 0.5952905946104261,
-    "gap_empirical": 0.6496321360270181,
-    "gap_rel_err": 0.09128573827401812,
-    "num_parameters_Y": 3158528,
-    "num_parameters_X": 3151360
-  },
-  {
-    "name": "B",
+    "name": "final",
     "M": 3,
     "K": 2,
     "W": 3,
@@ -34,41 +10,17 @@
       1,
       2
     ],
-    "ce_window": 1000,
+    "ce_window": 500,
     "L_Y_star": 2.1154920304176197,
     "L_X_star": 2.5397155646677017,
-    "y_plateau_mean": 2.134987990061442,
-    "y_plateau_std": 0.09265189443612205,
-    "x_plateau_mean": 2.577976942062378,
-    "x_plateau_std": 0.0869382147146047,
+    "y_plateau_mean": 2.121739228566488,
+    "y_plateau_std": 0.09217371690348071,
+    "x_plateau_mean": 2.583395799001058,
+    "x_plateau_std": 0.08193823103520749,
     "gap_theoretical": 0.42422353425008197,
-    "gap_empirical": 0.442988952000936,
-    "gap_rel_err": 0.04423474002692114,
+    "gap_empirical": 0.4616565704345703,
+    "gap_rel_err": 0.08823894282682906,
     "num_parameters_Y": 3154432,
-    "num_parameters_X": 3151360
-  },
-  {
-    "name": "C",
-    "M": 2,
-    "K": 3,
-    "W": 4,
-    "alpha": 0.5,
-    "seeds": [
-      0,
-      1,
-      2
-    ],
-    "ce_window": 1000,
-    "L_Y_star": 1.2559190473380906,
-    "L_X_star": 1.481324843183728,
-    "y_plateau_mean": 1.2704378763834636,
-    "y_plateau_std": 0.08878769532354061,
-    "x_plateau_mean": 1.4993024667104085,
-    "x_plateau_std": 0.0819526303600586,
-    "gap_theoretical": 0.22540579584563747,
-    "gap_empirical": 0.22886459032694484,
-    "gap_rel_err": 0.015344745099970827,
-    "num_parameters_Y": 3152384,
     "num_parameters_X": 3151360
   }
 ]

@@ -34,12 +34,12 @@ def _set_lr(optim, lr):
         g["lr"] = lr
 
 
-def _train_model(streams, input_len, vocab_size, cfg, seed, device, progress_desc=""):
+def _train_model(stream, iterations, input_len, vocab_size, cfg, seed, device, progress_desc=""):
     """Train one autoregressive transformer on the given stream tensor.
 
     Parameters
     ----------
-    streams : LongTensor (B, stream_len)
+    stream : LongTensor (stream_len,)  -- single long sequence; batch draws B windows
     input_len : int
         Input context length (W for Y-model, M*W for X-model).
     vocab_size : int
@@ -55,7 +55,12 @@ def _train_model(streams, input_len, vocab_size, cfg, seed, device, progress_des
             averaged across the B streams (bits per target token).
     """
     torch.manual_seed(seed)
+    if not isinstance(stream, torch.Tensor):
+        stream = torch.as_tensor(stream, dtype=torch.long, device=device)
+    else:
+        stream = stream.to(device)
     max_seq_len = input_len + 1
+    B = int(cfg["train"]["batch_size"])
     m_cfg = cfg["model"]
     model = TransformerLM(
         vocab_size=vocab_size,
@@ -76,14 +81,11 @@ def _train_model(streams, input_len, vocab_size, cfg, seed, device, progress_des
     )
     grad_clip = float(t_cfg.get("grad_clip", 1.0))
 
-    B, stream_len = streams.shape
-    S = stream_len - input_len
-    assert S > 0, f"stream too short: stream_len={stream_len}, input_len={input_len}"
-
-    last_loss_bits = torch.empty(S, device=device)
+    stream_len = stream.shape[0]
+    last_loss_bits = torch.empty(iterations, device=device)
     model.train()
     pbar = tqdm(
-        range(S),
+        range(iterations),
         desc=progress_desc,
         dynamic_ncols=True,
         mininterval=0.5,
@@ -94,8 +96,14 @@ def _train_model(streams, input_len, vocab_size, cfg, seed, device, progress_des
         lr = _warmup_lr(s, t_cfg["warmup_steps"], t_cfg["lr"])
         _set_lr(optim, lr)
 
-        x = streams[:, s : s + input_len]
-        y = streams[:, s + 1 : s + input_len + 1]
+        # B random windows from the 1D stream: shape (B, input_len + 1).
+        starts = torch.randint(
+            0, stream_len - input_len - 1, (B,), device=device, dtype=torch.long
+        )
+        offs = torch.arange(input_len + 1, device=device, dtype=torch.long)
+        data = stream[starts.unsqueeze(1) + offs.unsqueeze(0)]
+        x = data[:, :input_len]
+        y = data[:, 1:]
 
         logits = model(x)
         # Full-window CE (bits) for gradient.
@@ -120,23 +128,24 @@ def _train_model(streams, input_len, vocab_size, cfg, seed, device, progress_des
 
         pbar.set_postfix(
             loss=f"{last_loss.item():.4f}",
-            refresh=((s + 1) % 10 == 0 or s == S - 1),
+            refresh=((s + 1) % 10 == 0 or s == iterations - 1),
         )
 
     pbar.close()
     return {
         "last_pos_loss_bits": last_loss_bits.detach().cpu().numpy(),
-        "S": int(S),
+        "iterations": int(iterations),
         "num_parameters": int(model.num_parameters()),
     }
 
 
-def train_Y_model(stream_data, cfg, seed, device, progress_desc="Y-model"):
+def train_Y_model(streams, cfg, seed, device, progress_desc="Y-model"):
     """Train the Y-model: context W Y-symbols, predict next Y-symbol."""
     W = cfg["W"]
-    V_y = stream_data["V_y"]
+    V_y = streams["V_y"]
     return _train_model(
-        streams=stream_data["Y_streams"],
+        stream=streams["Y"],
+        iterations=int(cfg["train"]["iterations"]),
         input_len=W,
         vocab_size=V_y,
         cfg=cfg,
@@ -146,12 +155,13 @@ def train_Y_model(stream_data, cfg, seed, device, progress_desc="Y-model"):
     )
 
 
-def train_X_model(stream_data, cfg, seed, device, progress_desc="X-model"):
+def train_X_model(streams, cfg, seed, device, progress_desc="X-model"):
     """Train the X-model: context M*W X-bits, predict next X-bit."""
     M = cfg["M"]
     W = cfg["W"]
     return _train_model(
-        streams=stream_data["X_streams"],
+        stream=streams["X"],
+        iterations=int(cfg["train"]["iterations"]),
         input_len=M * W,
         vocab_size=2,
         cfg=cfg,
@@ -161,11 +171,11 @@ def train_X_model(stream_data, cfg, seed, device, progress_desc="X-model"):
     )
 
 
-def x_loss_to_per_Y_symbol(last_pos_loss_bits_x, M, S_Y):
+def x_loss_to_per_Y_symbol(last_pos_loss_bits_x, M, n_Y):
     """Sum M consecutive X-iteration last-position bit-losses into per-Y-symbol.
 
-    Returns an array of length S_Y with
+    Returns an array of length n_Y with
         loss_X_per_Y_symbol[s] = sum_{j=0}^{M-1} last_pos_loss_bits_x[M*s + j]
-    using the first M*S_Y entries of `last_pos_loss_bits_x`.
+    using the first M*n_Y entries of `last_pos_loss_bits_x`.
     """
-    return last_pos_loss_bits_x[: M * S_Y].reshape(S_Y, M).sum(axis=1)
+    return last_pos_loss_bits_x[: M * n_Y].reshape(n_Y, M).sum(axis=1)

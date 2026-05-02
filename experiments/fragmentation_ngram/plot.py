@@ -83,7 +83,7 @@ def plot_fig1(all_results, save_dir, file_stem="fig1_fragmentation_ngram"):
         yerr=loss_Y_std,
         color=COLOR_Y,
         capsize=4,
-        label="n-gram on Y",
+        label="$w+1$-gram on $\mathcal{Y}$",
     )
     ax_a.bar(
         x + off_X,
@@ -92,7 +92,7 @@ def plot_fig1(all_results, save_dir, file_stem="fig1_fragmentation_ngram"):
         yerr=loss_X_std,
         color=COLOR_X,
         capsize=4,
-        label="n-gram on X (normalized)",
+        label="$mW+1$-gram on $\mathcal{X}$",
     )
     # H_Y drawn as a short horizontal segment centered at each group.
     for i, h in enumerate(H_Y_mean):
@@ -147,7 +147,7 @@ def plot_fig1(all_results, save_dir, file_stem="fig1_fragmentation_ngram"):
         phase_MI_mean,
         width=bar_w,
         color=COLOR_TH,
-        label="Phase MI (theoretical)",
+        label="Phase ambiguity (theoretical)",
     )
     ax_b.bar(
         x + off_th,
@@ -157,7 +157,7 @@ def plot_fig1(all_results, save_dir, file_stem="fig1_fragmentation_ngram"):
         yerr=th_total_std,
         color=COLOR_RES,
         capsize=4,
-        label="Oracle residual (theoretical)",
+        label="Context deficit (theoretical)",
     )
     ax_b.bar(
         x + off_emp,
@@ -166,7 +166,7 @@ def plot_fig1(all_results, save_dir, file_stem="fig1_fragmentation_ngram"):
         yerr=emp_pen_std,
         color=COLOR_X,
         capsize=4,
-        label="Empirical penalty (loss_X - loss_Y)",
+        label="Empirical penalty ($L_X - L_Y$)",
     )
     ax_b.set_xticks(x)
     ax_b.set_xticklabels(labels, fontsize=9)

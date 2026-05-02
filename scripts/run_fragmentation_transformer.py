@@ -12,6 +12,7 @@ Usage:
 Artifacts:
     outputs/fragmentation_transformer/logs/{name}_seed{s}.npz
     outputs/fragmentation_transformer/figures/main/fragmentation_transformer_all.{pdf,png}
+        (or fragmentation_transformer_{cfg_name} when a single config is passed)
     outputs/fragmentation_transformer/figures/appendix/fragmentation_transformer_all_grad.{pdf,png}
     outputs/fragmentation_transformer/summary.json
 """
@@ -54,21 +55,16 @@ def _run_single_seed(cfg, seed, device, verbose=True):
     M, K, W = cfg["M"], cfg["K"], cfg["W"]
     t0 = time.time()
     streams = build_streams(
-        M=M, K=K, W=W,
-        alpha=cfg["alpha"],
-        n_sequence=cfg["n_sequence"],
-        batch_size=cfg["train"]["batch_size"],
-        seed=seed,
-        device=device,
+        M=M, K=K, alpha=cfg["alpha"], n_sequence=cfg["n_sequence"], seed=seed,
     )
     if verbose:
-        print(f"    [seed {seed}] streams ready S_Y={streams['S_Y']} "
-              f"S_X={streams['S_X']} ({time.time() - t0:.1f}s)", flush=True)
+        print(f"    [seed {seed}] streams ready n_Y={streams['n_Y']} "
+              f"n_X={streams['n_X']} ({time.time() - t0:.1f}s)", flush=True)
 
     asymp = compute_asymptotes(
         P=streams["P"], V_y=streams["V_y"],
         K=K, W=W, M=M,
-        n_marginal=cfg["n_sequence"],
+        n_marginal=streams["n_Y"],
         rng_seed=seed + 10_000,
     )
     if verbose:
@@ -91,10 +87,19 @@ def _run_single_seed(cfg, seed, device, verbose=True):
         print(f"    [seed {seed}] X-model ({x_out['num_parameters']:,} params) "
               f"done in {time.time() - t_x0:.1f}s", flush=True)
 
-    S_Y = streams["S_Y"]
-    y_per_symbol = y_out["last_pos_loss_bits"]
+    iterations = int(cfg["train"]["iterations"])
+    y_raw = y_out["last_pos_loss_bits"]
     x_per_bit = x_out["last_pos_loss_bits"]
-    x_per_symbol = x_loss_to_per_Y_symbol(x_per_bit, M, S_Y)
+    len_y = int(y_raw.shape[0])
+    len_x = int(x_per_bit.shape[0])
+    if len_y != iterations or len_x != iterations:
+        raise RuntimeError(
+            f"Loss trace lengths ({len_y}, {len_x}) != train.iterations ({iterations})"
+        )
+    # Main figure: one point per Y-symbol index; X side uses M bit-losses per Y-symbol.
+    S_align = iterations // M
+    y_per_symbol = y_raw
+    x_per_symbol = x_loss_to_per_Y_symbol(x_per_bit, M, S_align)
 
     return {
         "seed": seed,
@@ -103,8 +108,8 @@ def _run_single_seed(cfg, seed, device, verbose=True):
         "y_per_symbol": y_per_symbol,
         "x_per_symbol": x_per_symbol,
         "x_per_bit": x_per_bit,
-        "S_Y": S_Y,
-        "S_X": streams["S_X"],
+        "S_Y": S_align,
+        "S_X": len_x,
         "num_parameters_Y": int(y_out["num_parameters"]),
         "num_parameters_X": int(x_out["num_parameters"]),
     }
@@ -126,6 +131,8 @@ def run_config(cfg, device, verbose=True):
         asymp_list.append((r["L_Y_star"], r["L_X_star"]))
 
         npz_path = os.path.join(LOG_DIR, f"{name}_seed{s}.npz")
+        # Re-create after long training: logs/ may be missing if removed mid-run.
+        os.makedirs(LOG_DIR, exist_ok=True)
         np.savez_compressed(
             npz_path,
             y_per_symbol=r["y_per_symbol"].astype(np.float32),
@@ -205,12 +212,17 @@ def main():
         print(f"  GPU: {torch.cuda.get_device_name(0)}")
 
     cfgs = [_load_cfg(p) for p in cfg_paths]
+    os.makedirs(LOG_DIR, exist_ok=True)
+    os.makedirs(FIG_MAIN, exist_ok=True)
+    os.makedirs(FIG_APPX, exist_ok=True)
     if smoke:
         for c in cfgs:
             c["n_sequence"] = 50_000
             c["seeds"] = [0]
             c["train"]["warmup_steps"] = 50
             c["train"]["ce_window"] = 200
+            # Divisible by M for all default configs (A:4, B:3, C:2); keeps smoke fast.
+            c["train"]["iterations"] = 600
 
     all_cfg_data = []
     summary = []
@@ -235,7 +247,7 @@ def main():
 
     stem = ("fragmentation_transformer_all" if len(all_cfg_data) > 1
             else f"fragmentation_transformer_{all_cfg_data[0]['name']}")
-    paths = plot_configs(all_cfg_data, FIG_MAIN, FIG_APPX, file_stem=stem)
+    paths = plot_configs(all_cfg_data, FIG_MAIN, FIG_APPX, file_stem=stem, xscale="linear")
 
     summary_path = os.path.join(OUT_ROOT, "summary.json")
     os.makedirs(OUT_ROOT, exist_ok=True)

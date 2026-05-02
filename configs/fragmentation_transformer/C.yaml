@@ -19,6 +19,7 @@ model:
   init_std: 0.02
 
 train:
+  iterations: 20000
   batch_size: 128
   lr: 3.0e-4
   weight_decay: 0.01

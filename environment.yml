@@ -1,0 +1,11 @@
+# Conda environment for this repo: "bane" = Bytes Are Not Enough (working name).
+# Create: conda env create -f environment.yml
+# Update: conda env update -f environment.yml --prune
+name: bane
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip>=24
+  - pip:
+      - -r requirements.txt
