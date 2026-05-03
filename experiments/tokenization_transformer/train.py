@@ -1,26 +1,10 @@
-"""Training loop for the Theorem 3 tokenization-transformer experiment.
+"""Training loop for the Markov tokenization-transformer experiment.
 
-Stride-1 contiguous-window training over B parallel streams. The Y-LM
-operates on raw bits (V_y = 2) and the Z-LM on BPE token ids (V), but
-both share the same context length W and the same training procedure
-modulo `vocab_size` and `input_len`.
-
-Conventions:
-    - All logged losses are in bits (log base 2).
-    - Y-LM input length = W bits; Z-LM input length = W tokens.
-    - `last_pos_loss_bits[s]` is the cross-entropy of the model's last-token
-      prediction at iteration `s`, averaged over the B streams. For the Y-LM
-      this is already bits-per-bit. For the Z-LM it is bits-per-token, and
-      `train_Z_model` additionally returns `last_pos_loss_bits_per_bit =
-      last_pos_loss_bits / mean_token_bits` so the two curves can share the
-      bits-per-bit y-axis.
-    - For the y-axis (Y-symbols processed) we track:
-        Y-LM: every gradient step processes B last-position bits, so
-              cumulative `bits_processed = (s + 1) * B`.
-        Z-LM: every gradient step predicts B tokens, each of variable
-              bit-length; we sum `token_bits[predicted_target_token_ids]`
-              across the B targets per step. The cumulative sum is the
-              x-axis.
+Trains a single TransformerLM on a (possibly BPE-tokenized) sequence for a
+fixed number of iterations. Each iteration samples batch_size windows of
+length W+1 uniformly at random from the sequence. The logged loss is the
+last-token cross-entropy normalized by the compression ratio to give bits
+per source symbol (bits per original binary symbol).
 """
 
 import math
@@ -35,96 +19,112 @@ from models.transformer_lm import TransformerLM
 LOG2 = math.log(2.0)
 
 
-def _warmup_lr(step, warmup, base_lr):
-    if step < warmup:
-        return base_lr * (step + 1) / warmup
-    return base_lr
+def train_model(Z, ratio, token_bits, V, W, cfg, seed, device, progress_desc=""):
+    """Train one TransformerLM on token sequence Z.
 
+    Parameters
+    ----------
+    Z : np.ndarray (n,) int64
+        Token sequence. Raw binary if V==2, BPE-encoded otherwise.
+    ratio : float
+        len(Y) / len(Z). Dividing the per-token CE loss by this converts it
+        to bits per original source symbol (bits per bit).
+    token_bits : np.ndarray (V,) int64
+        Bit-length of each token id; used to count source bits in each step.
+    V : int
+        Vocabulary size (== model vocab_size).
+    W : int
+        Context window length. Model sees W tokens and predicts the next one.
+    cfg : dict
+        Full experiment config dict.
+    seed : int
+        Seeds both model initialization and the window-sampling RNG so that
+        results are fully reproducible.
+    device : torch.device
 
-def _set_lr(optim, lr):
-    for g in optim.param_groups:
-        g["lr"] = lr
+    Returns
+    -------
+    dict with:
+        loss_per_iter      (iterations,) float32 -- last-token CE averaged
+                           over the batch, normalized to bits per source
+                           symbol, one entry per gradient step.
+        bits_seen_per_iter (iterations,) int64   -- total source bits in the
+                           W input tokens across the batch per step
+                           (= sum of token_bits[x] over all B*W input tokens).
+        num_parameters     int
+    """
+    torch.manual_seed(seed)
 
+    m_cfg = cfg["model"]
+    t_cfg = cfg["train"]
+    iterations = int(t_cfg["iterations"])
+    B = int(t_cfg["batch_size"])
+    warmup = int(t_cfg.get("warmup_steps", 0))
+    grad_clip = float(t_cfg.get("grad_clip", 1.0))
+    base_lr = float(t_cfg["lr"])
 
-def _build_model(vocab_size, input_len, model_cfg, device):
-    return TransformerLM(
-        vocab_size=int(vocab_size),
-        max_seq_len=int(input_len + 1),
-        n_layers=model_cfg["n_layers"],
-        d_embd=model_cfg["d_embd"],
-        d_ffn=model_cfg["d_ffn"],
-        n_heads=model_cfg["n_heads"],
-        init_std=model_cfg["init_std"],
+    model = TransformerLM(
+        vocab_size=V,
+        max_seq_len=W + 1,
+        n_layers=m_cfg["n_layers"],
+        d_embd=m_cfg["d_embd"],
+        d_ffn=m_cfg["d_ffn"],
+        n_heads=m_cfg["n_heads"],
+        init_std=m_cfg["init_std"],
     ).to(device)
 
-
-def _build_optim(model, train_cfg):
-    return torch.optim.AdamW(
+    optim = torch.optim.AdamW(
         model.parameters(),
-        lr=train_cfg["lr"],
-        weight_decay=train_cfg["weight_decay"],
-        betas=tuple(train_cfg["betas"]),
+        lr=base_lr,
+        weight_decay=float(t_cfg["weight_decay"]),
+        betas=tuple(t_cfg["betas"]),
     )
 
+    Z_t = torch.as_tensor(Z, dtype=torch.long, device=device)
+    token_bits_t = torch.as_tensor(token_bits, dtype=torch.long, device=device)
+    n = len(Z)
 
-def train_Y_model(
-    streams,
-    W,
-    cfg,
-    seed,
-    device,
-    progress_desc="Y-model",
-):
-    """Train the bit-level Y-model.
+    loss_arr = np.empty(iterations, dtype=np.float32)
+    bits_arr = np.empty(iterations, dtype=np.int64)
 
-    Returns dict with:
-        last_pos_loss_bits    : (S_Y,) float32 -- bits-per-bit per step.
-        bits_processed        : (S_Y,) int64   -- cumulative bits at each
-                                                  step's end (= (s+1) * B).
-        S                     : int.
-        num_parameters        : int.
-    """
-    torch.manual_seed(seed * 31337 + 1)
-    vocab_size = 2
-    input_len = int(W)
-    model = _build_model(vocab_size, input_len, cfg["model"], device)
-    t_cfg = cfg["train"]
-    optim = _build_optim(model, t_cfg)
-    grad_clip = float(t_cfg.get("grad_clip", 1.0))
-
-    B, stream_len = streams.shape
-    S = stream_len - input_len
-    assert S > 0, f"stream too short: stream_len={stream_len}, W={input_len}"
-
-    last_loss_bits = torch.empty(S, device=device)
     model.train()
     pbar = tqdm(
-        range(S),
+        range(iterations),
         desc=progress_desc,
         dynamic_ncols=True,
         mininterval=0.5,
         miniters=10,
         leave=False,
     )
-    for s in pbar:
-        lr = _warmup_lr(s, t_cfg["warmup_steps"], t_cfg["lr"])
-        _set_lr(optim, lr)
 
-        x = streams[:, s : s + input_len]
-        y = streams[:, s + 1 : s + input_len + 1]
+    for s in pbar:
+        lr = base_lr * (s + 1) / warmup if s < warmup else base_lr
+        for g in optim.param_groups:
+            g["lr"] = lr
+
+        # Sample B windows of length W+1; valid starts are [0, n-W-1].
+        starts = torch.randint(0, n - W, (B,), device=device)
+        offs = torch.arange(W + 1, device=device)
+        data = Z_t[starts.unsqueeze(1) + offs.unsqueeze(0)]  # (B, W+1)
+        x = data[:, :W]   # (B, W) -- input tokens
+        y = data[:, 1:]   # (B, W) -- target tokens
 
         logits = model(x)
+
+        # Full-window CE for the gradient step.
         loss = F.cross_entropy(
-            logits.reshape(-1, vocab_size), y.reshape(-1), reduction="mean"
+            logits.reshape(-1, V), y.reshape(-1), reduction="mean"
         ) / LOG2
 
         with torch.no_grad():
-            last_logits = logits[:, -1, :]
-            last_targets = y[:, -1]
+            # Last-token CE, normalized to bits per source symbol.
             last_loss = F.cross_entropy(
-                last_logits, last_targets, reduction="mean"
+                logits[:, -1, :], y[:, -1], reduction="mean"
             ) / LOG2
-            last_loss_bits[s] = last_loss
+            loss_arr[s] = float(last_loss) / ratio
+
+            # Source bits seen: sum L(z) over all B*W input tokens.
+            bits_arr[s] = int(token_bits_t[x].sum())
 
         optim.zero_grad(set_to_none=True)
         loss.backward()
@@ -133,119 +133,14 @@ def train_Y_model(
         optim.step()
 
         pbar.set_postfix(
-            loss=f"{last_loss.item():.4f}",
-            refresh=((s + 1) % 10 == 0 or s == S - 1),
+            loss=f"{loss_arr[s]:.4f}",
+            refresh=((s + 1) % 10 == 0 or s == iterations - 1),
         )
+
     pbar.close()
 
-    bits_processed = (np.arange(1, S + 1, dtype=np.int64)) * int(B)
     return {
-        "last_pos_loss_bits": last_loss_bits.detach().cpu().numpy().astype(np.float32),
-        "bits_processed": bits_processed,
-        "S": int(S),
-        "num_parameters": int(model.num_parameters()),
-    }
-
-
-def train_Z_model(
-    streams,
-    W,
-    V,
-    mean_token_bits,
-    token_bits,
-    cfg,
-    seed,
-    device,
-    progress_desc="Z-model",
-):
-    """Train the token-level Z-model.
-
-    Returns dict with:
-        last_pos_loss_bits_per_token : (S_Z,) float32 -- raw CE in bits.
-        last_pos_loss_bits_per_bit   : (S_Z,) float32 -- divided by
-                                                         `mean_token_bits` so
-                                                         it lives on the Y-LM's
-                                                         bits-per-bit y-axis.
-        bits_processed_per_step      : (S_Z,) int64   -- per step, sum over
-                                                         the B last-position
-                                                         predicted target token
-                                                         bit-lengths.
-        bits_processed               : (S_Z,) int64   -- cumulative sum.
-        S                            : int.
-        num_parameters               : int.
-    """
-    if mean_token_bits <= 0:
-        raise ValueError(f"mean_token_bits must be > 0, got {mean_token_bits}")
-    torch.manual_seed(seed * 31337 + 2)
-    vocab_size = int(V)
-    input_len = int(W)
-    model = _build_model(vocab_size, input_len, cfg["model"], device)
-    t_cfg = cfg["train"]
-    optim = _build_optim(model, t_cfg)
-    grad_clip = float(t_cfg.get("grad_clip", 1.0))
-
-    B, stream_len = streams.shape
-    S = stream_len - input_len
-    assert S > 0, f"stream too short: stream_len={stream_len}, W={input_len}"
-
-    token_bits_t = torch.as_tensor(
-        np.asarray(token_bits, dtype=np.int64), device=device
-    )
-
-    last_loss_bits = torch.empty(S, device=device)
-    bits_per_step = torch.empty(S, device=device, dtype=torch.int64)
-    model.train()
-    pbar = tqdm(
-        range(S),
-        desc=progress_desc,
-        dynamic_ncols=True,
-        mininterval=0.5,
-        miniters=10,
-        leave=False,
-    )
-    for s in pbar:
-        lr = _warmup_lr(s, t_cfg["warmup_steps"], t_cfg["lr"])
-        _set_lr(optim, lr)
-
-        x = streams[:, s : s + input_len]
-        y = streams[:, s + 1 : s + input_len + 1]
-
-        logits = model(x)
-        loss = F.cross_entropy(
-            logits.reshape(-1, vocab_size), y.reshape(-1), reduction="mean"
-        ) / LOG2
-
-        with torch.no_grad():
-            last_logits = logits[:, -1, :]
-            last_targets = y[:, -1]
-            last_loss = F.cross_entropy(
-                last_logits, last_targets, reduction="mean"
-            ) / LOG2
-            last_loss_bits[s] = last_loss
-            bits_per_step[s] = token_bits_t[last_targets].sum()
-
-        optim.zero_grad(set_to_none=True)
-        loss.backward()
-        if grad_clip > 0.0:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=grad_clip)
-        optim.step()
-
-        pbar.set_postfix(
-            loss=f"{last_loss.item():.4f}",
-            refresh=((s + 1) % 10 == 0 or s == S - 1),
-        )
-    pbar.close()
-
-    per_token = last_loss_bits.detach().cpu().numpy().astype(np.float32)
-    per_bit = (per_token / float(mean_token_bits)).astype(np.float32)
-    bps = bits_per_step.detach().cpu().numpy().astype(np.int64)
-    bits_cum = np.cumsum(bps).astype(np.int64)
-
-    return {
-        "last_pos_loss_bits_per_token": per_token,
-        "last_pos_loss_bits_per_bit": per_bit,
-        "bits_processed_per_step": bps,
-        "bits_processed": bits_cum,
-        "S": int(S),
+        "loss_per_iter": loss_arr,
+        "bits_seen_per_iter": bits_arr,
         "num_parameters": int(model.num_parameters()),
     }

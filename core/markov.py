@@ -11,6 +11,42 @@ State encoding convention (big-endian):
 
 import numpy as np
 
+try:
+    import numba
+    _HAVE_NUMBA = True
+except ImportError:
+    _HAVE_NUMBA = False
+
+
+# ---------------------------------------------------------------------------
+# Numba-accelerated inner loops (compiled on first call, cached to disk)
+# ---------------------------------------------------------------------------
+
+if _HAVE_NUMBA:
+    @numba.jit(nopython=True, cache=True)
+    def _markov_loop(cum, u, Y, k, state, tail_mod, V_y):
+        """Fill Y[k:] for a general V_y-ary Markov chain."""
+        n = len(Y)
+        for i in range(k, n):
+            row = cum[state]
+            u_i = u[i - k]
+            y = V_y - 1
+            for j in range(V_y - 1):
+                if u_i <= row[j]:
+                    y = j
+                    break
+            Y[i] = y
+            state = (state % tail_mod) * V_y + y
+
+    @numba.jit(nopython=True, cache=True)
+    def _markov_loop_binary(p0, u, Y, k, state, tail_mod):
+        """Fill Y[k:] for a binary Markov chain (avoids searchsorted)."""
+        n = len(Y)
+        for i in range(k, n):
+            bit = 1 if u[i - k] > p0[state] else 0
+            Y[i] = bit
+            state = (state % tail_mod) * 2 + bit
+
 
 def stationary_dist(P, V_y, k):
     """Compute the stationary distribution over k-tuple states via power iteration.
@@ -29,26 +65,34 @@ def stationary_dist(P, V_y, k):
     pi : np.ndarray of shape (V_y**k,)
         Stationary distribution over the V_y**k k-tuple states.
     """
-    n_states = V_y ** k
-    # Induced transition matrix T over k-tuple states:
-    # from state s = (y_0, ..., y_{k-1}), emitting y_k moves to
-    # state s' = (y_1, ..., y_k). With big-endian encoding:
-    #   s' = (s mod V_y^(k-1)) * V_y + y_k
-    # and the transition probability is P[s, y_k].
-    T = np.zeros((n_states, n_states), dtype=np.float64)
     if k == 0:
-        # Degenerate case: no state, stationary is the row itself.
         return P.reshape(-1).copy()
+
+    n_states = V_y ** k
     tail_mod = V_y ** (k - 1)
-    for s in range(n_states):
-        base = (s % tail_mod) * V_y
-        for y in range(V_y):
-            s_next = base + y
-            T[s, s_next] = P[s, y]
+
+    # Efficient O(V_y * n_states) per-iteration algorithm.
+    #
+    # Each successor state s' = (s % tail_mod) * V_y + y_k has exactly V_y
+    # predecessors: s = y0 * tail_mod + (s' // V_y) for y0 in {0..V_y-1},
+    # with transition probability P[s, s' % V_y].
+    #
+    # So pi'[s'] = sum_{y0} pi[y0 * tail_mod + s'//V_y] * P[y0*tail_mod + s'//V_y, s'%V_y]
+    #
+    # This avoids building the dense (n_states, n_states) T matrix.
+    s_prime = np.arange(n_states, dtype=np.int64)
+    y_k = s_prime % V_y          # emitted symbol that leads into s'
+    suffix = s_prime // V_y      # = s % tail_mod (shared suffix of predecessors)
+
+    # preds[y0, s'] = y0 * tail_mod + suffix[s']  -- predecessor states
+    preds = (
+        np.arange(V_y, dtype=np.int64)[:, None] * tail_mod + suffix[None, :]
+    )  # (V_y, n_states)
+    trans = P[preds, y_k[None, :]]  # (V_y, n_states)  transition probs
 
     pi = np.full(n_states, 1.0 / n_states, dtype=np.float64)
     for _ in range(50000):
-        pi_new = pi @ T
+        pi_new = (pi[preds] * trans).sum(axis=0)
         pi_new /= pi_new.sum()
         if np.max(np.abs(pi_new - pi)) < 1e-12:
             pi = pi_new
@@ -70,17 +114,16 @@ def generate_markov_sequence(P, V_y, k, n, rng):
     """Generate a length-n sequence from the k-th order Markov chain P.
 
     Starts from a state sampled from the stationary distribution of P.
+    Uses Numba JIT if available, otherwise falls back to a pure-Python loop.
     """
     pi = stationary_dist(P, V_y, k)
     Y = np.empty(n, dtype=np.int32)
 
     if k == 0:
-        # Memoryless source: every symbol drawn i.i.d. from P[0].
-        probs = P[0]
-        Y[:] = rng.choice(V_y, size=n, p=probs)
+        Y[:] = rng.choice(V_y, size=n, p=P[0])
         return Y
 
-    # Decode initial state index into k symbols (big-endian).
+    # Decode initial state into k symbols (big-endian).
     s0 = rng.choice(len(pi), p=pi)
     init = np.empty(k, dtype=np.int32)
     tmp = s0
@@ -95,15 +138,27 @@ def generate_markov_sequence(P, V_y, k, n, rng):
     Y[:k] = init
     state = int(s0)
     tail_mod = V_y ** (k - 1)
-    # Draw all needed uniforms once for speed; decide transitions via cumsum.
     u = rng.random(n - k)
-    cum = np.cumsum(P, axis=1)
-    for i in range(k, n):
-        y = int(np.searchsorted(cum[state], u[i - k]))
-        if y >= V_y:
-            y = V_y - 1
-        Y[i] = y
-        state = (state % tail_mod) * V_y + y
+
+    if _HAVE_NUMBA:
+        if V_y == 2:
+            _markov_loop_binary(
+                P[:, 0].astype(np.float64),
+                u.astype(np.float64),
+                Y, k, state, tail_mod,
+            )
+        else:
+            cum = np.cumsum(P, axis=1).astype(np.float64)
+            _markov_loop(cum, u.astype(np.float64), Y, k, state, tail_mod, V_y)
+    else:
+        cum = np.cumsum(P, axis=1)
+        for i in range(k, n):
+            y = int(np.searchsorted(cum[state], u[i - k]))
+            if y >= V_y:
+                y = V_y - 1
+            Y[i] = y
+            state = (state % tail_mod) * V_y + y
+
     return Y
 
 

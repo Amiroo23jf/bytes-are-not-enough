@@ -6,7 +6,7 @@
 #SBATCH --gres=gpu:1
 #SBATCH --mem=32G
 #SBATCH --ntasks=1
-#SBATCH --time=03:00:00
+#SBATCH --time=04:00:00
 
 set -euo pipefail
 
@@ -18,9 +18,10 @@ echo "Working directory: $(pwd)"
 echo "Start time: $(date)"
 
 source ~/miniconda3/etc/profile.d/conda.sh
-conda activate trans-compress-gpu
+conda activate bane
 echo "Environment activated"
 
+export MKL_THREADING_LAYER=GNU
 export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
 
 # Optional:
