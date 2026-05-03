@@ -2,8 +2,8 @@ experiment: tokenization_transformer
 name: markov
 
 K: 12
-W: [8, 16]
-V: [6, 8, 10, 15, 20]
+W: [1, 2, 4, 8, 12, 16]
+V: [2, 4, 6, 8, 10, 15, 20]
 alpha: 0.4
 n_sequence: 25000000
 seeds: [0]
@@ -26,5 +26,5 @@ train:
   weight_decay: 0.01
   betas: [0.9, 0.95]
   warmup_steps: 500
-  iterations: 20000
+  iterations: 40000
   grad_clip: 1.0
