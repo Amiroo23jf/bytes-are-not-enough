@@ -1,0 +1,835 @@
+[
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 2,
+    "W": 1,
+    "alpha": 0.4,
+    "encoder": "none",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.0,
+    "plateau_loss_mean": 0.9420315623283386,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789248
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 2,
+    "W": 2,
+    "alpha": 0.4,
+    "encoder": "none",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.0,
+    "plateau_loss_mean": 0.91120845079422,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789248
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 2,
+    "W": 4,
+    "alpha": 0.4,
+    "encoder": "none",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.0,
+    "plateau_loss_mean": 0.8373357653617859,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789248
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 2,
+    "W": 8,
+    "alpha": 0.4,
+    "encoder": "none",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.0,
+    "plateau_loss_mean": 0.7546525597572327,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789248
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 2,
+    "W": 12,
+    "alpha": 0.4,
+    "encoder": "none",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.0,
+    "plateau_loss_mean": 0.46678096055984497,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789248
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 2,
+    "W": 16,
+    "alpha": 0.4,
+    "encoder": "none",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.0,
+    "plateau_loss_mean": 0.5065028667449951,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789248
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 4,
+    "W": 1,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.5897063335490036,
+    "plateau_loss_mean": 0.9077786803245544,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789760
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 4,
+    "W": 2,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.5897063335490036,
+    "plateau_loss_mean": 0.8341420888900757,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789760
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 4,
+    "W": 4,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.5897063335490036,
+    "plateau_loss_mean": 0.7566895484924316,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789760
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 4,
+    "W": 8,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.5897063335490036,
+    "plateau_loss_mean": 0.4411522150039673,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789760
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 4,
+    "W": 12,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.5897063335490036,
+    "plateau_loss_mean": 0.41435039043426514,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789760
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 4,
+    "W": 16,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.5897063335490036,
+    "plateau_loss_mean": 0.4068041443824768,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789760
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 6,
+    "W": 1,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.070511861175658,
+    "plateau_loss_mean": 0.8327602744102478,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790272
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 6,
+    "W": 2,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.070511861175658,
+    "plateau_loss_mean": 0.774255633354187,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790272
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 6,
+    "W": 4,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.070511861175658,
+    "plateau_loss_mean": 0.6620097756385803,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790272
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 6,
+    "W": 8,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.070511861175658,
+    "plateau_loss_mean": 0.42081359028816223,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790272
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 6,
+    "W": 12,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.070511861175658,
+    "plateau_loss_mean": 0.4081239402294159,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790272
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 6,
+    "W": 16,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.070511861175658,
+    "plateau_loss_mean": 0.4068230092525482,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790272
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 8,
+    "W": 1,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.5456573834348575,
+    "plateau_loss_mean": 0.7839140892028809,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790784
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 8,
+    "W": 2,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.5456573834348575,
+    "plateau_loss_mean": 0.7594126462936401,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790784
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 8,
+    "W": 4,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.5456573834348575,
+    "plateau_loss_mean": 0.6011661291122437,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790784
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 8,
+    "W": 8,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.5456573834348575,
+    "plateau_loss_mean": 0.41165703535079956,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790784
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 8,
+    "W": 12,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.5456573834348575,
+    "plateau_loss_mean": 0.4062594175338745,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790784
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 8,
+    "W": 16,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.5456573834348575,
+    "plateau_loss_mean": 0.40433892607688904,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790784
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 10,
+    "W": 1,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.9444559016495195,
+    "plateau_loss_mean": 0.7814108729362488,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 791296
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 10,
+    "W": 2,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.9444559016495195,
+    "plateau_loss_mean": 0.7370339632034302,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 791296
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 10,
+    "W": 4,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.9444559016495195,
+    "plateau_loss_mean": 0.4786251485347748,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 791296
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 10,
+    "W": 8,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.9444559016495195,
+    "plateau_loss_mean": 0.4077135920524597,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 791296
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 10,
+    "W": 12,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.9444559016495195,
+    "plateau_loss_mean": 0.40391799807548523,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 791296
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 10,
+    "W": 16,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.9444559016495195,
+    "plateau_loss_mean": 0.40203866362571716,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 791296
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 15,
+    "W": 1,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 3.6138035151900447,
+    "plateau_loss_mean": 0.7647513747215271,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 792576
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 15,
+    "W": 2,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 3.6138035151900447,
+    "plateau_loss_mean": 0.6949402689933777,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 792576
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 15,
+    "W": 4,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 3.6138035151900447,
+    "plateau_loss_mean": 0.43023359775543213,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 792576
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 15,
+    "W": 8,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 3.6138035151900447,
+    "plateau_loss_mean": 0.40523284673690796,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 792576
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 15,
+    "W": 12,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 3.6138035151900447,
+    "plateau_loss_mean": 0.4030742943286896,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 792576
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 15,
+    "W": 16,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 3.6138035151900447,
+    "plateau_loss_mean": 0.4015543758869171,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 792576
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 20,
+    "W": 1,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 4.172144692648113,
+    "plateau_loss_mean": 0.7498957514762878,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 793856
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 20,
+    "W": 2,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 4.172144692648113,
+    "plateau_loss_mean": 0.621607780456543,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 793856
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 20,
+    "W": 4,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 4.172144692648113,
+    "plateau_loss_mean": 0.4179275333881378,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 793856
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 20,
+    "W": 8,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 4.172144692648113,
+    "plateau_loss_mean": 0.4045237898826599,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 793856
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 20,
+    "W": 12,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 4.172144692648113,
+    "plateau_loss_mean": 0.4028881788253784,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 793856
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 20,
+    "W": 16,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 4.172144692648113,
+    "plateau_loss_mean": 0.4008062779903412,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 793856
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 2,
+    "W": 6,
+    "alpha": 0.4,
+    "encoder": "none",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.0,
+    "plateau_loss_mean": 0.7987592220306396,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789248
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 4,
+    "W": 6,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 1.5897063335490036,
+    "plateau_loss_mean": 0.6111849546432495,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 789760
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 6,
+    "W": 6,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.070511861175658,
+    "plateau_loss_mean": 0.4849759638309479,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790272
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 8,
+    "W": 6,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.5456573834348575,
+    "plateau_loss_mean": 0.42247527837753296,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 790784
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 10,
+    "W": 6,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 2.9444559016495195,
+    "plateau_loss_mean": 0.40992259979248047,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 791296
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 15,
+    "W": 6,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 3.6138035151900447,
+    "plateau_loss_mean": 0.4090580344200134,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 792576
+  },
+  {
+    "name": "markov",
+    "K": 12,
+    "V": 20,
+    "W": 6,
+    "alpha": 0.4,
+    "encoder": "greedy",
+    "seeds": [
+      0
+    ],
+    "entropy_rate_mean": 0.3951974135916282,
+    "entropy_rate_std": 0.0,
+    "mean_ratio": 4.172144692648113,
+    "plateau_loss_mean": 0.4061584770679474,
+    "plateau_loss_std": 0.0,
+    "num_parameters": 793856
+  }
+]

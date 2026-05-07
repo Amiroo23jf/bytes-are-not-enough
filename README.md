@@ -49,13 +49,40 @@ expected family before doing anything.
 
 ## Setup
 
+The conda environment is named `bane` (Bytes Are Not Enough).
+
+### Create the environment (GPU machine, CUDA 12.8+)
+
+```bash
+conda env create -f environment.yml
+conda activate bane
 ```
+
+`environment.yml` pulls CUDA-enabled PyTorch wheels via the `cu128` index,
+which is compatible with CUDA 12.8 through 13.x.
+
+### Manual install (if `conda env create` is unavailable)
+
+```bash
+conda create -n bane python=3.11 -y
+conda activate bane
+pip install torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0 \
+    --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
 ```
 
-The transformer experiment can run on CPU but is much faster on GPU; the
-SLURM script in `slurm/fragmentation_transformer.sh` activates a CUDA
-environment and submits with `--gres=gpu:1`.
+### CPU-only machine
+
+Remove the `--extra-index-url` line from `environment.yml` and replace
+the pinned `torch==2.11.0` / `torchvision` / `torchaudio` lines in
+`requirements.txt` with their plain PyPI versions, then run
+`conda env create -f environment.yml`.
+
+### Verify
+
+```bash
+conda run -n bane python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
+```
 
 ### Initializing the repo
 

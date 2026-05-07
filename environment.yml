@@ -1,11 +1,18 @@
 # Conda environment for this repo: "bane" = Bytes Are Not Enough (working name).
-# Create: conda env create -f environment.yml
-# Update: conda env update -f environment.yml --prune
+#
+# Create:  conda env create -f environment.yml
+# Update:  conda env update -f environment.yml --prune
+#
+# The --extra-index-url below pulls CUDA-enabled PyTorch wheels (cu128 targets
+# CUDA 12.8+; also works on CUDA 13.x which is backward compatible).
+# For CPU-only machines remove that line and change torch/torchvision/torchaudio
+# to their plain PyPI versions in requirements.txt.
 name: bane
 channels:
   - conda-forge
 dependencies:
-  - python=3.10
+  - python=3.11
   - pip>=24
   - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cu128
       - -r requirements.txt

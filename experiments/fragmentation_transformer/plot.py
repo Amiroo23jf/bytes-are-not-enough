@@ -10,8 +10,8 @@ and legend entries follow the paper notation (see ``DEFAULT_*`` constants).
 """
 
 import os
-from tracemalloc import start
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -21,8 +21,24 @@ COLOR_X = "#D85A30"
 # Default axis labels for plot_configs (override via xlabel_main=..., etc.).
 DEFAULT_XLABEL_MAIN = "Source symbols processed"
 DEFAULT_YLABEL_MAIN = "Loss (bits per source symbol)"
-DEFAULT_XLABEL_APPENDIX = "Gradient steps"
+DEFAULT_XLABEL_APPENDIX = "Iterations"
 DEFAULT_YLABEL_APPENDIX = DEFAULT_YLABEL_MAIN
+
+plt.rcParams.update({
+    "font.family":       "serif",
+    "font.size":         8,
+    "axes.labelsize":    8,
+    "axes.titlesize":    8,
+    "xtick.labelsize":   7,
+    "ytick.labelsize":   7,
+    "legend.fontsize":   6.5,
+    "lines.linewidth":   1.5,
+    "axes.linewidth":    0.7,
+    "xtick.major.width": 0.6,
+    "ytick.major.width": 0.6,
+    "pdf.fonttype":      42,
+    "ps.fonttype":       42,
+})
 
 
 def _sliding_mean(x, W):
@@ -119,7 +135,7 @@ def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
 
     # --- Main figure: x-axis = Y-symbols processed --------------------------
     n = len(all_cfg_data)
-    fig_main, axes_main = plt.subplots(1, n, figsize=(5.5 * n, 4.3), sharey=False)
+    fig_main, axes_main = plt.subplots(1, n, figsize=(4.875 * n, 3.3), sharey=False)
     if n == 1:
         axes_main = [axes_main]
     for ax, d in zip(axes_main, all_cfg_data):
@@ -136,14 +152,14 @@ def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
         ax.axhline(d["L_X_star"], color=COLOR_X, linestyle="--",
                    linewidth=1.1, label=leg_LX(d))
         ax.set_xscale(xscale)
-        ax.set_xlabel(xlab_m, fontsize=11)
-        ax.set_ylabel(ylab_m, fontsize=11)
+        ax.set_xlabel(xlab_m)
+        ax.set_ylabel(ylab_m)
         _tit = title_main(d)
         if _tit:
             ax.set_title(_tit, fontsize=11)
         ax.grid(True, alpha=0.25)
-        ax.tick_params(labelsize=9)
-        ax.legend(fontsize=8, loc="upper right")
+        ax.legend(loc="upper right", framealpha=0.85, edgecolor="none",
+                  handlelength=1.4)
     fig_main.tight_layout()
     main_pdf = os.path.join(save_dir_main, f"{file_stem}.pdf")
     main_png = os.path.join(save_dir_main, f"{file_stem}.png")
@@ -152,7 +168,7 @@ def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
     plt.close(fig_main)
 
     # --- Appendix figure: x-axis = gradient updates -------------------------
-    fig_app, axes_app = plt.subplots(1, n, figsize=(5.5 * n, 4.3), sharey=False)
+    fig_app, axes_app = plt.subplots(1, n, figsize=(4.875 * n, 3.3), sharey=False)
     if n == 1:
         axes_app = [axes_app]
     for ax, d in zip(axes_app, all_cfg_data):
@@ -185,14 +201,14 @@ def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
         ax.axhline(d["L_X_star"], color=COLOR_X, linestyle="--",
                    linewidth=1.1, label=leg_LX(d))
         ax.set_xscale(xscale)
-        ax.set_xlabel(xlab_a, fontsize=11)
-        ax.set_ylabel(ylab_a, fontsize=11)
+        ax.set_xlabel(xlab_a)
+        ax.set_ylabel(ylab_a)
         _tit = title_app(d)
         if _tit:
             ax.set_title(_tit, fontsize=11)
         ax.grid(True, alpha=0.25)
-        ax.tick_params(labelsize=9)
-        ax.legend(fontsize=8, loc="upper right")
+        ax.legend(loc="upper right", framealpha=0.85, edgecolor="none",
+                  handlelength=1.4)
     fig_app.tight_layout()
     app_pdf = os.path.join(save_dir_appendix, f"{file_stem}_grad.pdf")
     app_png = os.path.join(save_dir_appendix, f"{file_stem}_grad.png")

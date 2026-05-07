@@ -10,10 +10,15 @@ matplotlib>=3.7,<4
 pyyaml>=6.0,<7
 pandas>=2.0,<3
 tqdm>=4.60,<5
+# PyTorch: installed via environment.yml (needs --extra-index-url for CUDA wheels).
+# For a manual install: pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
 torch==2.11.0
 torchvision==0.26.0
 torchaudio==2.11.0
 tokenizers>=0.15,<1
+sentencepiece>=0.2,<1
+datasets>=2.0,<4
+transformers>=4.40,<5
 pytest>=7.0,<10
 
 # Co-installed tools often found in scientific envs (silences pip resolver warnings)

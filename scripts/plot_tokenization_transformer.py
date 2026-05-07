@@ -1,186 +1,271 @@
-"""Re-render figures and (re)compute summary.json from saved per-seed npz logs.
+"""Generate figures for the tokenization_transformer experiment.
 
-Use after a successful training run if you only need to regenerate plots or
-the summary -- e.g. after a plotting bug or styling change. Does NOT retrain.
+Reads outputs/tokenization_transformer/summary.json and the per-seed NPZ logs,
+then writes into outputs/tokenization_transformer/figures/:
+
+  plateau_vs_W.{ext}
+      Plateau loss vs window size W; one line per V.
+      Half NeurIPS column (~3.25 × 2.2 in).
+
+  curves_W{w}_steps.{ext}    (one per W)
+      Loss vs gradient steps; all V trends, smoothed.
+
+  curves_W{w}_bits.{ext}     (one per W)
+      Loss vs source symbols processed; all V trends, smoothed.
 
 Usage
 -----
-    python scripts/replot_tokenization_transformer.py
-        # rebuild figures + summary.json across every config that has logs
-
-    python scripts/replot_tokenization_transformer.py A_greedy A_priority
-        # only the named configs (matched against the {name}_seed*.npz files)
+  python scripts/plot_tokenization_transformer.py          # PDF (default)
+  python scripts/plot_tokenization_transformer.py --png    # PNG at 300 DPI
 """
 
 import json
 import os
 import sys
-from collections import defaultdict
 
 import numpy as np
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
-if ROOT not in sys.path:
-    sys.path.insert(0, ROOT)
-
-from experiments.tokenization_transformer.plot import plot_configs  # noqa: E402
-
+ROOT     = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 OUT_ROOT = os.path.join(ROOT, "outputs", "tokenization_transformer")
-LOG_DIR = os.path.join(OUT_ROOT, "logs")
-FIG_MAIN = os.path.join(OUT_ROOT, "figures", "main")
-FIG_APPX = os.path.join(OUT_ROOT, "figures", "appendix")
+LOG_DIR  = os.path.join(OUT_ROOT, "logs")
+FIG_DIR  = os.path.join(OUT_ROOT, "figures")
+SUMMARY  = os.path.join(OUT_ROOT, "summary.json")
 
-CE_WINDOW_DEFAULT = 1000
-ALPHA_DEFAULT = 0.5
-TAIL_FRAC = 0.1
+# ---------------------------------------------------------------------------
+# Style constants
+# ---------------------------------------------------------------------------
+
+HALF_COL_W = 4.875  # 1.5× half NeurIPS column width (inches)
+HALF_COL_H = 3.3   # 1.5× height
+
+# Trailing moving-average window (gradient steps).
+# Using a trailing average avoids all boundary artifacts: output starts at
+# step SMOOTH and ends at the final step with no zero-padding distortion.
+SMOOTH = 500
+
+plt.rcParams.update({
+    "font.family":       "serif",
+    "font.size":         8,
+    "axes.labelsize":    8,
+    "axes.titlesize":    8,
+    "xtick.labelsize":   7,
+    "ytick.labelsize":   7,
+    "legend.fontsize":   6.5,
+    "lines.linewidth":   1.5,
+    "axes.linewidth":    0.7,
+    "xtick.major.width": 0.6,
+    "ytick.major.width": 0.6,
+    "pdf.fonttype":      42,
+    "ps.fonttype":       42,
+})
 
 
-def _tail_mean(arr, frac=TAIL_FRAC):
-    n_tail = max(1, int(frac * len(arr)))
-    return float(np.mean(arr[-n_tail:]))
+def _palette(n, vmax=0.75):
+    """Sample n colors from plasma[0, vmax] — avoids the harsh yellow tail."""
+    cmap = matplotlib.colormaps["plasma"]
+    return [cmap(vmax * i / max(n - 1, 1)) for i in range(n)]
 
 
-def _scalar(npz, key, default):
-    return npz[key].item() if key in npz.files else default
+def _smooth(arr, k):
+    """Trailing uniform moving average.
+
+    smoothed[i] = mean(arr[i : i+k]), aligned to index i+k-1 of the
+    original array (the last step in that window).  No zero-padding,
+    so there are no boundary artifacts at either end.
+
+    Returns (smoothed_array, offset) where offset = k-1 is the index in
+    the original array corresponding to the first output element.
+    """
+    if k <= 1:
+        return arr.astype(np.float32), 0
+    cs = np.concatenate([[0.0], np.cumsum(arr, dtype=np.float64)])
+    smoothed = ((cs[k:] - cs[:-k]) / k).astype(np.float32)
+    return smoothed, k - 1   # first output is at original index k-1
 
 
-def _load_per_config(name_filter=None):
-    grouped = defaultdict(list)
+def _si(x, _pos=None):
+    if abs(x) >= 1e9:
+        return f"{x/1e9:.1f}G"
+    if abs(x) >= 1e6:
+        return f"{x/1e6:.1f}M"
+    if abs(x) >= 1e3:
+        return f"{x/1e3:.0f}K"
+    return f"{x:.0f}"
+
+
+def _save(fig, path, fmt, dpi=300):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fig.savefig(path, bbox_inches="tight", dpi=dpi if fmt == "png" else None)
+    plt.close(fig)
+    print(f"  Saved {path}")
+
+
+# ---------------------------------------------------------------------------
+# Data loading
+# ---------------------------------------------------------------------------
+
+def load_summary():
+    with open(SUMMARY) as f:
+        entries = json.load(f)
+    V_vals = sorted(set(e["V"] for e in entries))
+    W_vals = sorted(set(e["W"] for e in entries))
+    H = float(entries[0]["entropy_rate_mean"])
+    return entries, V_vals, W_vals, H
+
+
+def load_curves(V, W):
+    """Return (loss_1d, bits_cumsum_1d) averaged over seeds, or (None, None)."""
+    loss_runs, bits_runs = [], []
     for fname in sorted(os.listdir(LOG_DIR)):
-        if not fname.endswith(".npz"):
+        if not (fname.startswith(f"markov_V{V}_W{W}_seed") and fname.endswith(".npz")):
             continue
-        stem = fname[:-4]
-        if "_seed" not in stem:
+        d = np.load(os.path.join(LOG_DIR, fname))
+        loss_runs.append(d["loss_per_iter"].astype(np.float64))
+        bits_runs.append(np.cumsum(d["bits_seen_per_iter"].astype(np.float64)))
+    if not loss_runs:
+        return None, None
+    return np.mean(loss_runs, axis=0), np.mean(bits_runs, axis=0)
+
+
+# ---------------------------------------------------------------------------
+# Plot 1 — plateau loss vs W
+# ---------------------------------------------------------------------------
+
+_PLATEAU_W_EXCLUDE = {16}   # W values to omit from the plateau figure
+
+def plot_plateau_vs_W(entries, V_vals, W_vals, H, fmt):
+    fig, ax = plt.subplots(figsize=(HALF_COL_W, HALF_COL_H))
+    colors = _palette(len(V_vals))
+    lookup = {(e["V"], e["W"]): e for e in entries}
+    plot_W_vals = [w for w in W_vals if w not in _PLATEAU_W_EXCLUDE]
+
+    for color, V in zip(colors, V_vals):
+        ws, ys = [], []
+        for W in plot_W_vals:
+            e = lookup.get((V, W))
+            if e is not None:
+                ws.append(W)
+                ys.append(e["plateau_loss_mean"])
+        ax.plot(ws, ys, marker="o", markersize=4, color=color, label=f"$V={V}$")
+
+    ax.axhline(H, color="black", linewidth=0.9, linestyle="--",
+               label=r"$H$ (entropy rate)")
+
+    ax.set_xlabel("Window size $W$")
+    ax.set_ylabel("Plateau loss (bits / source symbol)")
+    ax.set_xticks(plot_W_vals)
+    ax.xaxis.set_minor_locator(mticker.NullLocator())
+    ax.legend(loc="upper right", framealpha=0.85, edgecolor="none",
+              ncol=2, columnspacing=0.8, handlelength=1.4)
+    ax.grid(axis="y", linewidth=0.4, alpha=0.5)
+
+    fig.tight_layout(pad=0.4)
+    _save(fig, os.path.join(FIG_DIR, f"plateau_vs_W.{fmt}"), fmt)
+
+
+# ---------------------------------------------------------------------------
+# Plot 2a — loss vs gradient steps (one figure per W)
+# ---------------------------------------------------------------------------
+
+def plot_curves_steps(W, V_vals, H, fmt):
+    fig, ax = plt.subplots(figsize=(HALF_COL_W, HALF_COL_H))
+    colors = _palette(len(V_vals))
+
+    for color, V in zip(colors, V_vals):
+        loss, _ = load_curves(V, W)
+        if loss is None:
             continue
-        name, seed_str = stem.rsplit("_seed", 1)
-        if name_filter is not None and name not in name_filter:
+        smoothed, off = _smooth(loss, SMOOTH)
+        # 1-indexed gradient steps; first output is at step off+1
+        steps = np.arange(off + 1, len(loss) + 1)
+        ax.plot(steps, smoothed, color=color, label=f"$V={V}$", alpha=0.9)
+
+    ax.axhline(H, color="black", linewidth=0.8, linestyle="--", label=r"$H$")
+    ax.set_xlabel("Iterations")
+    ax.set_ylabel("Loss (bits per source symbol)")
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter(_si))
+    ax.grid(linewidth=0.4, alpha=0.4)
+    ax.legend(loc="upper right", framealpha=0.85, edgecolor="none",
+              ncol=2, columnspacing=0.8, handlelength=1.4)
+
+    fig.tight_layout(pad=0.4)
+    _save(fig, os.path.join(FIG_DIR, f"curves_W{W}_steps.{fmt}"), fmt)
+
+
+# ---------------------------------------------------------------------------
+# Plot 2b — loss vs source symbols processed (one figure per W)
+# ---------------------------------------------------------------------------
+
+def plot_curves_bits(W, V_vals, H, fmt):
+    fig, ax = plt.subplots(figsize=(HALF_COL_W, HALF_COL_H))
+    colors = _palette(len(V_vals))
+
+    # Collect all runs first to find the shared truncation point.
+    curves = {}
+    for V in V_vals:
+        loss, bits = load_curves(V, W)
+        if loss is not None:
+            curves[V] = (loss, bits)
+
+    if not curves:
+        plt.close(fig)
+        return
+
+    max_bits = min(bits[-1] for _, bits in curves.values())
+
+    for color, V in zip(colors, V_vals):
+        if V not in curves:
             continue
-        try:
-            seed = int(seed_str)
-        except ValueError:
-            continue
-        grouped[name].append((seed, os.path.join(LOG_DIR, fname)))
+        loss, bits = curves[V]
+        smoothed, off = _smooth(loss, SMOOTH)
+        # Align bits to the smoothed output (off = first valid index).
+        bits_sm = bits[off:]
+        mask = bits_sm <= max_bits * 1.001
+        ax.plot(bits_sm[mask], smoothed[mask], color=color,
+                label=f"$V={V}$", alpha=0.9)
 
-    plot_data = []
-    summary = []
-    for name, items in sorted(grouped.items()):
-        items.sort(key=lambda x: x[0])
-        seeds = [s for s, _ in items]
+    ax.axhline(H, color="black", linewidth=0.8, linestyle="--", label=r"$H$")
+    ax.set_xlabel("Source Symbols Processed")
+    ax.set_ylabel("Loss (bits per source symbol)")
+    ax.xaxis.set_major_formatter(mticker.FuncFormatter(_si))
+    ax.grid(linewidth=0.4, alpha=0.4)
+    ax.legend(loc="upper right", framealpha=0.85, edgecolor="none",
+              ncol=2, columnspacing=0.8, handlelength=1.4)
 
-        plot_d = {
-            "name": name,
-            "y_per_bit_seeds": [],
-            "y_bits_processed_seeds": [],
-            "z_per_bit_seeds": [],
-            "z_bits_processed_seeds": [],
-        }
-        K = W = V = None
-        alpha = None
-        ce_window = None
-        encoder = None
-        mtbs = []
-        n_params_y = None
-        n_params_z = None
-        y_per_bit_per_seed = []
-        z_per_bit_per_seed = []
+    fig.tight_layout(pad=0.4)
+    _save(fig, os.path.join(FIG_DIR, f"curves_W{W}_bits.{fmt}"), fmt)
 
-        for seed, p in items:
-            f = np.load(p)
-            plot_d["y_per_bit_seeds"].append(f["y_per_bit"])
-            plot_d["y_bits_processed_seeds"].append(f["y_bits_processed"])
-            plot_d["z_per_bit_seeds"].append(f["z_per_bit"])
-            plot_d["z_bits_processed_seeds"].append(f["z_bits_processed"])
-            y_per_bit_per_seed.append(f["y_per_bit"])
-            z_per_bit_per_seed.append(f["z_per_bit"])
 
-            K, W, V = int(f["K"]), int(f["W"]), int(f["V"])
-            mtbs.append(float(f["mean_token_bits"]))
-            n_params_y = int(_scalar(f, "num_parameters_Y", 0))
-            n_params_z = int(_scalar(f, "num_parameters_Z", 0))
-            alpha = float(_scalar(f, "alpha", ALPHA_DEFAULT))
-            ce_window = int(_scalar(f, "ce_window", CE_WINDOW_DEFAULT))
-            if "encoder" in f.files:
-                encoder = bytes(f["encoder"]).decode("utf-8", errors="replace")
-
-        if encoder is None:
-            encoder = (
-                "greedy" if "greedy" in name
-                else "priority" if "priority" in name
-                else "?"
-            )
-
-        plot_d["K"], plot_d["W"], plot_d["V"] = K, W, V
-        plot_d["alpha"] = alpha
-        plot_d["ce_window"] = ce_window
-        plot_d["encoder"] = encoder
-        plot_d["seeds"] = list(seeds)
-        plot_d["mean_token_bits"] = float(np.mean(mtbs))
-
-        y_tails = [_tail_mean(c) for c in y_per_bit_per_seed]
-        z_tails = [_tail_mean(c) for c in z_per_bit_per_seed]
-        y_plat = float(np.mean(y_tails))
-        y_plat_std = float(np.std(y_tails))
-        z_plat = float(np.mean(z_tails))
-        z_plat_std = float(np.std(z_tails))
-
-        summary.append({
-            "name": name,
-            "K": K, "W": W, "V": V, "alpha": alpha,
-            "encoder": encoder,
-            "seeds": seeds,
-            "ce_window": ce_window,
-            "mean_token_bits": float(np.mean(mtbs)),
-            "y_plateau_mean_bpb": y_plat,
-            "y_plateau_std_bpb": y_plat_std,
-            "z_plateau_mean_bpb": z_plat,
-            "z_plateau_std_bpb": z_plat_std,
-            "gap_empirical_bpb": y_plat - z_plat,
-            "num_parameters_Y": n_params_y,
-            "num_parameters_Z": n_params_z,
-        })
-        plot_data.append(plot_d)
-
-    return plot_data, summary
-
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 
 def main():
-    name_filter = set(sys.argv[1:]) or None
-    plot_data, summary = _load_per_config(name_filter)
-    if not plot_data:
-        print(f"No matching logs in {LOG_DIR}.")
-        sys.exit(1)
+    if not os.path.isfile(SUMMARY):
+        sys.exit(f"Summary not found: {SUMMARY}\nRun the experiment first.")
 
-    summary_path = os.path.join(OUT_ROOT, "summary.json")
-    os.makedirs(OUT_ROOT, exist_ok=True)
-    with open(summary_path, "w") as f:
-        json.dump(summary, f, indent=2)
+    both = "--both" in sys.argv
+    fmt  = "png" if "--png" in sys.argv else "pdf"
+    fmts = ["pdf", "png"] if both else [fmt]
 
-    stem = (
-        "tokenization_transformer_all" if len(plot_data) > 1
-        else f"tokenization_transformer_{plot_data[0]['name']}"
-    )
-    paths = plot_configs(plot_data, FIG_MAIN, FIG_APPX, file_stem=stem)
+    entries, V_vals, W_vals, H = load_summary()
+    print(f"Loaded summary: V={V_vals}  W={W_vals}  H={H:.4f}  format={'pdf+png' if both else fmt}")
 
-    print("Summary (bits per bit, plateau = last 10% of training):")
-    print(
-        f"{'cfg':>10} | {'enc':>8} | {'#Y':>10} {'#Z':>10} | "
-        f"{'mtb':>6} | {'Y_plat':>7} {'Z_plat':>7} | {'gap':>7}"
-    )
-    for s in summary:
-        print(
-            f"{s['name']:>10} | {s['encoder']:>8} | "
-            f"{s['num_parameters_Y']:>10,} {s['num_parameters_Z']:>10,} | "
-            f"{s['mean_token_bits']:>6.3f} | "
-            f"{s['y_plateau_mean_bpb']:>7.4f} {s['z_plateau_mean_bpb']:>7.4f} | "
-            f"{s['gap_empirical_bpb']:>+7.4f}"
-        )
-    print(f"Main figure:        {paths['main_pdf']}")
-    print(f"Appendix figure:    {paths['appendix_pdf']}")
-    print(f"Grid figure:        {paths['grid_main_pdf']}")
-    print(f"Grid (grad) figure: {paths['grid_appendix_pdf']}")
-    print(f"Seed-0 figure:      {paths['seed_main_pdf']}")
-    print(f"Seed-0 (grad):      {paths['seed_appendix_pdf']}")
-    print(f"Summary JSON:       {summary_path}")
+    for fmt in fmts:
+        print(f"--- {fmt} ---")
+        print("Generating plateau_vs_W ...")
+        plot_plateau_vs_W(entries, V_vals, W_vals, H, fmt)
+
+        for W in W_vals:
+            print(f"Generating curves W={W} ...")
+            plot_curves_steps(W, V_vals, H, fmt)
+            plot_curves_bits(W, V_vals, H, fmt)
+
+    print("Done.")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,30 @@
+experiment: tokenization_transformer
+name: markov
+
+K: 12
+W: [4, 6, 12]
+V: [2, 8, 20]
+alpha: 0.4
+n_sequence: 25000000
+seeds: [1, 2]
+
+tokenizer:
+  encoder: greedy
+  train_bits: 500000
+  chunk_size: 8192
+
+model:
+  n_layers: 4
+  d_embd: 128
+  d_ffn: 512
+  n_heads: 4
+  init_std: 0.02
+
+train:
+  batch_size: 128
+  lr: 3.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  warmup_steps: 500
+  iterations: 40000
+  grad_clip: 1.0

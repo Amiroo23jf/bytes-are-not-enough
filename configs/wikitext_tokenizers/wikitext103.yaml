@@ -1,0 +1,21 @@
+experiment: wikitext_tokenizers
+name: wikitext103
+
+# Window sizes (in tokens) to sweep.
+W: [1, 2, 4, 8, 16, 32, 64, 128, 256]
+
+data:
+  # Which WikiText-103 splits to encode for the distribution analysis.
+  # Tokenizers are always trained on the train split only.
+  splits: [train, validation, test]
+
+tokenizers:
+  - {name: char,             type: character}
+  - {name: bpe_1k,           type: bpe,          vocab_size: 1000}
+  - {name: bpe_4k,           type: bpe,          vocab_size: 4000}
+  - {name: bpe_16k,          type: bpe,          vocab_size: 16000}
+  - {name: bpe_32k,          type: bpe,          vocab_size: 32000}
+  - {name: wordpiece_32k,    type: wordpiece,    vocab_size: 32000}
+  - {name: sentencepiece_32k, type: sentencepiece, vocab_size: 32000}
+  - {name: bert,             type: pretrained,   model: bert-base-uncased}
+  - {name: gpt2,             type: pretrained,   model: gpt2}

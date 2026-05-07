@@ -34,8 +34,7 @@ FIG_MAIN = os.path.join(ROOT, "outputs", "fragmentation_transformer", "figures",
 FIG_APPX = os.path.join(ROOT, "outputs", "fragmentation_transformer", "figures", "appendix")
 CFG_DIR = os.path.join(ROOT, "configs", "fragmentation_transformer")
 
-# Blue family for Y, orange family for X. Each seed gets a progressively
-# darker shade so overlays are readable.
+# Blue family for Y, orange family for X.
 Y_COLORS = ["#9BC4E8", "#378ADD", "#1F3E66"]
 X_COLORS = ["#F2B090", "#D85A30", "#7A2F13"]
 
@@ -115,7 +114,7 @@ def _panel_per_seed(ax, meta, seeds, x_axis_mode="y_symbols"):
         ax.axhline(s["L_X_star"], color=xcol, linestyle="--", linewidth=0.9)
 
     ax.set_xlabel("Y-symbols processed" if x_axis_mode == "y_symbols"
-                  else "gradient updates", fontsize=10)
+                  else "Iterations", fontsize=10)
     ax.set_ylabel("bits per Y-symbol", fontsize=10)
     ax.set_title(_title(meta), fontsize=10)
     ax.grid(True, alpha=0.25)
