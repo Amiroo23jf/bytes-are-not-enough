@@ -1,55 +1,10 @@
-# Bytes are not Enough: Tokenization for Efficient Neural Compression
+# Effective Context in Transformers: An Analysis of Fragmentation and Tokenization
 
-Reproducibility code for the paper. Each experiment family has its own
-sub-package under `experiments/`, its own configs under `configs/`, its own
-script entry points under `scripts/`, and its own output directory under
-`outputs/`.
-
-## Layout
-
-```
-core/                 Markov source utilities, theoretical quantities,
-                      n-gram baseline (used across all experiments).
-models/               TransformerLM (modality-agnostic LM).
-tokenizer/            Tokenizer registry: bit_fragment (Theorem 1) and
-                      bpe (Theorem 3, greedy/priority encoders).
-                      Singular to avoid clashing with HuggingFace's
-                      `tokenizers` package on import.
-representations/      Decoder + (optional) tokenizer pipeline; turns raw
-                      bytes from text/audio/image files into a token id
-                      stream for the compression benchmarks.
-datasets/             Modality-specific loaders; ``text_pipeline`` (raw bytes
-                      or ByteLevel-BPE + frequency remap) writes under
-                      ``outputs/datasets/<stem>/``. See ``data/README.md``.
-compressors/          Compressor ABC + sub-packages for each codec.
-                      External codecs (EDPC, TRACE) are vendored under
-                      compressors/<name>/upstream/, never as submodules.
-experiments/<name>/   One package per experiment family.
-configs/<name>/       YAML configs, one file per run variant.
-scripts/              Thin CLI entry points (sys.path -> repo root).
-slurm/                SLURM batch scripts.
-outputs/<name>/       All generated artifacts for that experiment family.
-logs/                 SLURM stdout / stderr.
-```
-
-## Experiments and how to run them
-
-| Experiment family | Theorem | Configs | Run | Plot | Outputs |
-|---|---|---|---|---|---|
-| `fragmentation_ngram` | 3.1 | `configs/fragmentation_ngram/{base,Kp1}.yaml` | `python scripts/run_fragmentation_ngram.py [config]` | (plotting is part of the run) | `outputs/fragmentation_ngram/` |
-| `fragmentation_ngram` (sweep) | 3.1 | sweep parameters hard-coded in the script | `python scripts/sweep_fragmentation_ngram.py` | (plotting is part of the run) | `outputs/fragmentation_ngram/` |
-| `fragmentation_transformer` | 1 | `configs/fragmentation_transformer/{A,B,C}.yaml` | `python scripts/run_fragmentation_transformer.py [--smoke] [configs...]` | `python scripts/plot_fragmentation_transformer.py [A B C]` | `outputs/fragmentation_transformer/` |
-| `tokenization_transformer` | 3 | `configs/tokenization_transformer/{A_greedy,A_priority}.yaml` | `python scripts/run_tokenization_transformer.py [--smoke] [configs...]` | (plotting is part of the run) | `outputs/tokenization_transformer/` |
-| `text_transformer` | -- | `configs/text_transformer/{base,bytes_enwik8,tokens_enwik8}.yaml` | `python scripts/run_text_transformer.py [--smoke] [configs...]` | (not yet) | `outputs/text_transformer/` |
-| `compression_benchmarks` | -- | (placeholder) | (not yet implemented) | (not yet implemented) | (not yet generated) |
-
-Configs include `experiment:` and `theorem:` header fields so artifacts
-self-identify; the run scripts assert the `experiment:` field matches the
-expected family before doing anything.
+Reproducibility code for the paper.
 
 ## Setup
 
-The conda environment is named `bane` (Bytes Are Not Enough).
+The conda environment is named `bane` (legacy shorthand from the previous working title).
 
 ### Create the environment (GPU machine, CUDA 12.8+)
 
@@ -84,50 +39,136 @@ the pinned `torch==2.11.0` / `torchvision` / `torchaudio` lines in
 conda run -n bane python -c "import torch; print(torch.__version__, torch.cuda.is_available())"
 ```
 
-### Initializing the repo
+---
 
-```
-git init
-git add .
-git commit -m "Initial flat-layout refactor"
-```
+## Reproducing Paper Results
 
-(The `.gitignore` already excludes `__pycache__/`, `logs/`, etc., so
-`git status` after a fresh `git init` shows only intended content.)
+Each experiment is self-contained: run the training script, then the plot script.
+GPU is required for the transformer experiments; the n-gram and tokenizer
+span experiments run on CPU.
 
-## Adding a new vendored compressor
+### Section 3 — Fragmentation in Transformer
 
-Each external codec lives in `compressors/<name>/` as a sub-package. Vendor
-the upstream code (do **not** use git submodules -- see the rationale in the
-project plan and in `THIRD_PARTY_NOTICES.md`). Procedure:
+Trains a symbol-level and a fragment-level transformer on a Markov source and
+compares their cross-entropy curves to the theoretical bound.
 
-1. Clone the upstream repo, note its commit hash.
-2. Copy only the source files imported by `compressors/<name>/adapter.py`
-   (plus their transitive imports) into `compressors/<name>/upstream/`.
-3. Copy the upstream `LICENSE` verbatim. Preserve copyright headers in the
-   source files.
-4. Fill in `compressors/<name>/upstream/README.md` with the upstream URL,
-   commit hash, vendoring date, list of files removed, and the exact
-   command(s) used to vendor.
-5. Start `compressors/<name>/upstream/MODIFICATIONS.md` empty; every later
-   edit gets a one-paragraph entry (file, rationale, expected effect on
-   benchmark numbers).
-6. Strip author-identifying boilerplate from any vendored READMEs for
-   double-blind anonymization. Keep license / copyright headers in source
-   files (mandatory).
-7. Add a row to repo-root `THIRD_PARTY_NOTICES.md`.
+```bash
+# Train (GPU; 3 seeds, ~1–2 h on a single GPU)
+conda run -n bane python scripts/run_fragmentation_transformer.py \
+    configs/fragmentation_transformer/final.yaml
 
-Imports stay explicit so the boundary is obvious in diffs:
-
-```python
-from compressors.<name>.upstream.<module> import <Class>   # their code
-from compressors.<name>.adapter import <NAME>Compressor    # our wrapper
+# Regenerate figures from saved logs (no retraining needed)
+conda run -n bane python scripts/plot_fragmentation_transformer_final.py
 ```
 
-The vanilla transformer compressor under `compressors/transformer/` is our
-own work and has no `upstream/` directory.
+Figures are written to `outputs/fragmentation_transformer/figures/`:
+- `main/fragmentation_transformer_final.{pdf,png}` — main paper figure
+- `appendix/fragmentation_transformer_final_grad.{pdf,png}` — gradient-norm appendix figure
 
-## Adding a new experiment family
+### Section 3 — Fragmentation Terms Decomposition
+
+Measures the excess loss of an n-gram model that operates on fragments
+rather than source symbols, across a grid of Markov orders and alphabet sizes.
+
+```bash
+# Run base configuration (K = k, exact context match)
+conda run -n bane python scripts/run_fragmentation_ngram.py
+
+# Run K = k+1 variant (one extra token of context)
+conda run -n bane python scripts/run_fragmentation_ngram.py \
+    configs/fragmentation_ngram/Kp1.yaml
+
+# Sweep over Dirichlet alpha and context offset K - k
+conda run -n bane python scripts/sweep_fragmentation_ngram.py
+```
+
+Artifacts are written to `outputs/fragmentation_ngram/`
+(figures and raw CSVs/JSONs).
+
+### Section 4 — Tokenization in Transformer
+
+Sweeps over vocabulary size V and context window W on a Markov source with
+BPE tokenization, measuring plateau loss in bits per source symbol.
+
+```bash
+# Train (GPU; one seed, sweeps V × W, ~2–4 h)
+conda run -n bane python scripts/run_tokenization_transformer.py
+
+# Plot curves and plateau figure
+conda run -n bane python scripts/plot_tokenization_transformer.py
+```
+
+Figures are written to `outputs/tokenization_transformer/figures/`:
+- `plateau_vs_W.{pdf,png}` — plateau loss vs. window size, one line per V
+- `curves_W{w}_steps.{pdf,png}` — loss vs. gradient steps (one per W)
+- `curves_W{w}_bits.{pdf,png}` — loss vs. source symbols seen (one per W)
+
+### WikiText-103 Tokenizer Span Analysis
+
+Measures the character-span distribution of W consecutive tokens for
+several standard tokenizers (BPE, WordPiece, SentencePiece, GPT-2, BERT)
+on WikiText-103.
+
+```bash
+# Build tokenizers and compute span distributions (CPU; ~30 min)
+conda run -n bane python scripts/run_wikitext_tokenizers.py
+
+# Plot CDF figures
+conda run -n bane python scripts/plot_wikitext_tokenizers.py
+```
+
+Figures are written to `outputs/wikitext_tokenizers/figures/cdf_W{w}.{pdf,png}`.
+
+### Markov Tokenizer Span Analysis
+
+Same span-distribution analysis as above, but on a synthetic binary Markov-K
+source using the same BPE tokenizers trained for the tokenization transformer
+experiment (V=2, 4, 6, 8, 10, 15, 20).  For each W ∈ {1, …, 12}, plots the
+slack curve CDF(w_s) × log₂(V) / ratio versus source-bit span w_s.
+
+```bash
+# Generate sequence, train tokenizers, compute distributions (CPU; ~10 min)
+conda run -n bane python scripts/run_markov_tokenizers.py
+
+# Plot slack figures
+conda run -n bane python scripts/plot_markov_tokenizers.py
+```
+
+Figures are written to `outputs/markov_tokenizers/figures/slack_W{w}.{pdf,png}`.
+
+---
+
+## Repository Layout
+
+```
+core/                 Markov source utilities, theoretical quantities,
+                      n-gram baseline (used across all experiments).
+models/               TransformerLM (modality-agnostic LM).
+tokenizer/            Tokenizer registry: bit_fragment (Theorem 1) and
+                      bpe (Theorem 3, greedy/priority encoders).
+                      Singular to avoid clashing with HuggingFace's
+                      `tokenizers` package on import.
+representations/      Decoder + (optional) tokenizer pipeline; turns raw
+                      bytes from text/audio/image files into a token id
+                      stream for the compression benchmarks.
+datasets/             Modality-specific loaders.
+experiments/<name>/   One package per experiment family.
+configs/<name>/       YAML configs, one file per run variant.
+scripts/              Thin CLI entry points (sys.path -> repo root).
+slurm/                SLURM batch scripts.
+outputs/<name>/       All generated artifacts for that experiment family.
+logs/                 SLURM stdout / stderr.
+```
+
+All experiment configs carry `experiment:` and `theorem:` header fields so
+artifacts self-identify; run scripts assert the `experiment:` field matches
+the expected family before doing anything.
+
+---
+
+## Development
+
+### Adding a new experiment family
 
 1. Create `experiments/<exp>/{__init__.py, run.py, plot.py, ...}` with the
    experiment logic.
@@ -144,4 +185,3 @@ if ROOT not in sys.path:
 ```
 
 4. Resolve all output paths against `os.path.join(ROOT, "outputs", "<exp>", ...)`.
-5. Add a row to the table above.

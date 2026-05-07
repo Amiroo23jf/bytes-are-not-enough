@@ -1,4 +1,4 @@
-# Conda environment for this repo: "bane" = Bytes Are Not Enough (working name).
+# Conda environment for this repo: "bane" (legacy shorthand; paper title: Effective Context in Transformers).
 #
 # Create:  conda env create -f environment.yml
 # Update:  conda env update -f environment.yml --prune
