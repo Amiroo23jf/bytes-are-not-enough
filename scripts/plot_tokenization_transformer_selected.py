@@ -104,22 +104,31 @@ def load_summary():
 
 
 def load_config(V, W):
-    path = os.path.join(LOG_DIR, f"markov_V{V}_W{W}_seed0.npz")
-    if not os.path.isfile(path):
-        sys.exit(f"Log not found: {path}")
-    d = np.load(path)
-    loss = d["loss_per_iter"].astype(np.float64)
-    bits = np.cumsum(d["bits_seen_per_iter"].astype(np.float64))
-    return loss, bits
+    """Return (mean_loss, std_loss, mean_bits) averaged over all available seeds."""
+    loss_runs, bits_runs = [], []
+    for fname in sorted(os.listdir(LOG_DIR)):
+        if not (fname.startswith(f"markov_V{V}_W{W}_seed") and fname.endswith(".npz")):
+            continue
+        d = np.load(os.path.join(LOG_DIR, fname))
+        loss_runs.append(d["loss_per_iter"].astype(np.float64))
+        bits_runs.append(np.cumsum(d["bits_seen_per_iter"].astype(np.float64)))
+    if not loss_runs:
+        sys.exit(f"No logs found for V={V} W={W} in {LOG_DIR}")
+    loss_arr = np.stack(loss_runs)
+    return np.mean(loss_arr, axis=0), np.std(loss_arr, axis=0), np.mean(bits_runs, axis=0)
 
 
 def plot_steps(H, color_map, fmt):
     fig, ax = plt.subplots(figsize=(HALF_COL_W, HALF_COL_H))
     for cfg in PAIRS:
-        loss, _ = load_config(cfg["V"], cfg["W"])
-        smoothed, off = _smooth(loss, SMOOTH)
-        ax.plot(np.arange(off + 1, len(loss) + 1), smoothed,
-                color=color_map[cfg["V"]], label=cfg["label"])
+        loss, std, _ = load_config(cfg["V"], cfg["W"])
+        mean_sm, off = _smooth(loss, SMOOTH)
+        std_sm,  _   = _smooth(std,  SMOOTH)
+        steps = np.arange(off + 1, len(loss) + 1)
+        color = color_map[cfg["V"]]
+        ax.fill_between(steps, mean_sm - 0.5*std_sm, mean_sm + 0.5*std_sm,
+                        color=color, alpha=0.25, linewidth=0)
+        ax.plot(steps, mean_sm, color=color, label=cfg["label"])
     if H is not None:
         ax.axhline(H, color="black", linewidth=0.8, linestyle="--", label=r"$H$")
     ax.set_xlabel("Iterations")
@@ -134,19 +143,18 @@ def plot_steps(H, color_map, fmt):
 def plot_bits(H, color_map, fmt):
     fig, ax = plt.subplots(figsize=(HALF_COL_W, HALF_COL_H))
 
-    all_bits = []
-    for cfg in PAIRS:
-        _, bits = load_config(cfg["V"], cfg["W"])
-        all_bits.append(bits)
-    bits_max = min(b[-1] for b in all_bits)
+    all_data = [load_config(cfg["V"], cfg["W"]) for cfg in PAIRS]
+    bits_max = min(d[2][-1] for d in all_data)
 
-    for cfg, bits in zip(PAIRS, all_bits):
-        loss, _ = load_config(cfg["V"], cfg["W"])
-        smoothed, off = _smooth(loss, SMOOTH)
+    for cfg, (loss, std, bits) in zip(PAIRS, all_data):
+        mean_sm, off = _smooth(loss, SMOOTH)
+        std_sm,  _   = _smooth(std,  SMOOTH)
         bits_sm = bits[off:]
         mask = bits_sm <= bits_max * 1.001
-        ax.plot(bits_sm[mask], smoothed[mask],
-                color=color_map[cfg["V"]], label=cfg["label"])
+        color = color_map[cfg["V"]]
+        ax.fill_between(bits_sm[mask], (mean_sm - 0.5*std_sm)[mask], (mean_sm + 0.5*std_sm)[mask],
+                        color=color, alpha=0.25, linewidth=0)
+        ax.plot(bits_sm[mask], mean_sm[mask], color=color, label=cfg["label"])
     if H is not None:
         ax.axhline(H, color="black", linewidth=0.8, linestyle="--", label=r"$H$")
     ax.set_xlabel("Source Symbols Processed")
