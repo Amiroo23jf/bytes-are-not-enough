@@ -69,9 +69,10 @@ def _plot_one(ax, x_axis, mean, std, color, label):
 
 
 def _default_panel_title(d):
+    suffix = ", +boundary" if d.get("boundary", False) else ""
     return (
         f"Config {d['name']}: M={d['M']}, K={d['K']}, W={d['W']}, "
-        f"$\\alpha$={d['alpha']}"
+        f"$\\alpha$={d['alpha']}{suffix}"
     )
 
 
@@ -80,7 +81,8 @@ def _default_legend_y(d):
 
 
 def _default_legend_x(d):
-    return rf"Source ($\mathcal{{X}}$), $Mw={d['M'] * d['W']}$"
+    block_len = d.get("block_len_x", d["M"])
+    return rf"Source ($\mathcal{{X}}$), $Mw={block_len * d['W']}$"
 
 
 def _default_legend_L_Y(d):
@@ -101,6 +103,7 @@ def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
 
     `all_cfg_data` is a list of dicts, one per config, with:
         name, M, K, W, alpha,
+        boundary (optional, default False), block_len_x (optional, default M),
         y_per_symbol_seeds : list of 1D numpy arrays (len S_Y each)
         x_per_symbol_seeds : list of 1D numpy arrays (len S_Y each)
         x_per_bit_seeds    : list of 1D numpy arrays (len S_X each)
@@ -173,28 +176,28 @@ def plot_configs(all_cfg_data, save_dir_main, save_dir_appendix, file_stem,
         axes_app = [axes_app]
     for ax, d in zip(axes_app, all_cfg_data):
         ce_w = d["ce_window"]
-        M = d["M"]
+        block_len = d.get("block_len_x", d["M"])
         # Y-model: 1 update per Y-symbol. x-axis = 1..S_Y.
         y_mean, y_std, _ = _aggregate_seeds(d["y_per_symbol_seeds"], ce_w)
         start_idx = 100
         S_Y = len(y_mean)
         y_x = np.arange(start_idx + 1, S_Y + 1)
-        # X-model: M updates per Y-symbol. Smooth the per-bit losses in bits,
-        # then plot against x-axis = 1..S_X.
-        x_bit_mean, x_bit_std, _ = _aggregate_seeds(d["x_per_bit_seeds"], ce_w * M)
+        # X-model: block_len updates per Y-symbol. Smooth the per-token losses
+        # in bits, then plot against x-axis = 1..S_X.
+        x_bit_mean, x_bit_std, _ = _aggregate_seeds(d["x_per_bit_seeds"], ce_w * block_len)
         S_X = len(x_bit_mean)
         x_x = np.arange(start_idx + 1, S_X + 1)
 
         # Both curves must be in bits per Y-symbol on the y-axis. Multiply the
-        # smoothed per-bit X-curve by M to put it in the same units.
+        # smoothed per-token X-curve by block_len to put it in the same units.
         ax.plot(y_x, y_mean[start_idx:S_Y], color=COLOR_Y, linewidth=1.5,
                 label=leg_y(d))
         ax.fill_between(y_x, y_mean[start_idx:S_Y] - y_std[start_idx:S_Y], y_mean[start_idx:S_Y] + y_std[start_idx:S_Y],
                         color=COLOR_Y, alpha=0.2)
-        ax.plot(x_x, x_bit_mean[start_idx:S_X] * M, color=COLOR_X, linewidth=1.5,
+        ax.plot(x_x, x_bit_mean[start_idx:S_X] * block_len, color=COLOR_X, linewidth=1.5,
                 label=leg_x(d))
-        ax.fill_between(x_x, (x_bit_mean[start_idx:S_X] - x_bit_std[start_idx:S_X]) * M,
-                        (x_bit_mean[start_idx:S_X] + x_bit_std[start_idx:S_X]) * M,
+        ax.fill_between(x_x, (x_bit_mean[start_idx:S_X] - x_bit_std[start_idx:S_X]) * block_len,
+                        (x_bit_mean[start_idx:S_X] + x_bit_std[start_idx:S_X]) * block_len,
                         color=COLOR_X, alpha=0.2)
         ax.axhline(d["L_Y_star"], color=COLOR_Y, linestyle="--",
                    linewidth=1.1, label=leg_LY(d))

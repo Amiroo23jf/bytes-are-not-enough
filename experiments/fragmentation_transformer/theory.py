@@ -29,8 +29,12 @@ from core.theory import (
 )
 
 
-def compute_asymptotes(P, V_y, K, W, M, n_marginal, rng_seed):
-    """Compute L_Y* and L_X* in bits per Y-symbol for a given transition matrix."""
+def compute_asymptotes(P, V_y, K, W, M, n_marginal, rng_seed, boundary=False):
+    """Compute L_Y* and L_X* in bits per Y-symbol for a given transition matrix.
+
+    `boundary`: if True, the joint table is built over (M+1)-token blocks
+    (M content bits + a boundary token), matching `build_streams(boundary=True)`.
+    """
     if W < K:
         raise NotImplementedError(
             "L_Y* computation for W < K is not yet implemented. "
@@ -38,16 +42,20 @@ def compute_asymptotes(P, V_y, K, W, M, n_marginal, rng_seed):
         )
     L_Y_star = H_Y_theoretical(P, V_y, K)
 
+    boundary_token = 2 if boundary else None
+    vocab_size = 3 if boundary else 2
+    block_len = M + (1 if boundary else 0)
+
     rng = np.random.default_rng(rng_seed)
     Y_long = generate_markov_sequence(P, V_y, K, n_marginal, rng)
     marginal = estimate_marginal_Y(Y_long, W, V_y)
-    table = build_joint_table(marginal, V_y, W, M)
-    losses = compute_losses_from_table(table, M)
-    L_X_star = losses["L_X_stat"] * M
-    L_X_orc = losses["L_X_orc"] * M
+    table = build_joint_table(marginal, V_y, W, M, boundary_token=boundary_token)
+    losses = compute_losses_from_table(table, M, vocab_size=vocab_size)
+    L_X_star = losses["L_X_stat"] * block_len
+    L_X_orc = losses["L_X_orc"] * block_len
     return {
         "L_Y_star": float(L_Y_star),
         "L_X_star": float(L_X_star),
         "L_X_orc_star": float(L_X_orc),
-        "phase_MI_per_Y": float(losses["MI"] * M),
+        "phase_MI_per_Y": float(losses["MI"] * block_len),
     }

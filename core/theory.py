@@ -70,38 +70,47 @@ def estimate_marginal_Y(Y, K, V_y):
     return result
 
 
-def _symbol_to_bits(y, M):
-    """Return an M-length tuple of bits for symbol y, MSB first."""
-    return tuple((y >> (M - 1 - j)) & 1 for j in range(M))
+def _symbol_to_tokens(y, M, boundary_token=None):
+    """Return the per-symbol token tuple for y: M bits (MSB first), plus
+    `boundary_token` appended if given."""
+    bits = tuple((y >> (M - 1 - j)) & 1 for j in range(M))
+    if boundary_token is None:
+        return bits
+    return bits + (boundary_token,)
 
 
-def build_joint_table(marginal_Y, V_y, K, M):
+def build_joint_table(marginal_Y, V_y, K, M, boundary_token=None):
     """Build the joint table p(theta, ctx, b) from the marginal over (K+1)-tuples.
 
+    Each Y symbol expands to a block of `block_len` tokens: M bits (MSB
+    first), plus one trailing `boundary_token` if given (block_len = M + 1);
+    otherwise block_len = M.
+
     For each (K+1)-tuple (y_0, ..., y_K) with probability p:
-      1. Flatten to (K+1)*M bits (MSB first per symbol).
-      2. For each theta in {0, ..., M-1}:
-           ctx = bits[theta : theta + K*M]
-           b   = bits[theta + K*M]
-           table[(theta, ctx, b)] += p * (1/M)
+      1. Flatten to (K+1)*block_len tokens.
+      2. For each theta in {0, ..., block_len-1}:
+           ctx = tokens[theta : theta + K*block_len]
+           b   = tokens[theta + K*block_len]
+           table[(theta, ctx, b)] += p * (1/block_len)
 
     The returned table sums to 1 over all (theta, ctx, b) entries.
     """
+    block_len = M + (1 if boundary_token is not None else 0)
     table = defaultdict(float)
-    w = 1.0 / M
+    w = 1.0 / block_len
     for tup, p in marginal_Y.items():
-        bits = []
+        tokens = []
         for y in tup:
-            bits.extend(_symbol_to_bits(int(y), M))
-        KM = K * M
-        for theta in range(M):
-            ctx = tuple(bits[theta : theta + KM])
-            b = bits[theta + KM]
+            tokens.extend(_symbol_to_tokens(int(y), M, boundary_token))
+        K_block = K * block_len
+        for theta in range(block_len):
+            ctx = tuple(tokens[theta : theta + K_block])
+            b = tokens[theta + K_block]
             table[(theta, ctx, b)] += p * w
     return dict(table)
 
 
-def compute_losses_from_table(table, M):
+def compute_losses_from_table(table, M, vocab_size=2):
     """Compute L_X_stat, L_X_orc, and MI from the joint table p(theta, ctx, b).
 
     Stationary predictor (phase-blind):
@@ -114,6 +123,10 @@ def compute_losses_from_table(table, M):
         p(theta, ctx)   = sum_b p(theta, ctx, b)
         H(b|theta, ctx) = -sum_b p(b|theta, ctx) log2 p(b|theta, ctx)
         L_X_orc         = sum_{theta, ctx} p(theta, ctx) H(b|theta, ctx)
+
+    `M` is unused (kept for call-site compatibility with existing callers);
+    `vocab_size` sets the range of next-token values `b` ranges over (2 for
+    plain binary fragmentation, 3 when a boundary token is included).
 
     Returns dict with keys L_X_stat, L_X_orc, MI (all in bits per X token).
     """
@@ -133,7 +146,7 @@ def compute_losses_from_table(table, M):
         if pc < _EPS:
             continue
         H_bc = 0.0
-        for b in (0, 1):
+        for b in range(vocab_size):
             pcb = p_ctx_b.get((ctx, b), 0.0)
             if pcb <= 0.0:
                 continue
@@ -150,7 +163,7 @@ def compute_losses_from_table(table, M):
         if ptc < _EPS:
             continue
         H_btc = 0.0
-        for b in (0, 1):
+        for b in range(vocab_size):
             ptcb = p_theta_ctx_b.get((theta, ctx, b), 0.0)
             if ptcb <= 0.0:
                 continue

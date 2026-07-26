@@ -53,10 +53,13 @@ DEFAULT_CONFIGS = [
 
 def _run_single_seed(cfg, seed, device, verbose=True):
     M, K, W = cfg["M"], cfg["K"], cfg["W"]
+    boundary = bool(cfg.get("boundary", False))
     t0 = time.time()
     streams = build_streams(
         M=M, K=K, alpha=cfg["alpha"], n_sequence=cfg["n_sequence"], seed=seed,
+        boundary=boundary,
     )
+    block_len_x = streams["block_len_x"]
     if verbose:
         print(f"    [seed {seed}] streams ready n_Y={streams['n_Y']} "
               f"n_X={streams['n_X']} ({time.time() - t0:.1f}s)", flush=True)
@@ -66,6 +69,7 @@ def _run_single_seed(cfg, seed, device, verbose=True):
         K=K, W=W, M=M,
         n_marginal=streams["n_Y"],
         rng_seed=seed + 10_000,
+        boundary=boundary,
     )
     if verbose:
         print(f"    [seed {seed}] L_Y*={asymp['L_Y_star']:.4f}  "
@@ -96,10 +100,12 @@ def _run_single_seed(cfg, seed, device, verbose=True):
         raise RuntimeError(
             f"Loss trace lengths ({len_y}, {len_x}) != train.iterations ({iterations})"
         )
-    # Main figure: one point per Y-symbol index; X side uses M bit-losses per Y-symbol.
-    S_align = iterations // M
+    # Main figure: one point per Y-symbol index; X side uses block_len_x
+    # token-losses per Y-symbol (M content bits, plus the boundary token
+    # if enabled).
+    S_align = iterations // block_len_x
     y_per_symbol = y_raw
-    x_per_symbol = x_loss_to_per_Y_symbol(x_per_bit, M, S_align)
+    x_per_symbol = x_loss_to_per_Y_symbol(x_per_bit, block_len_x, S_align)
 
     return {
         "seed": seed,
@@ -112,6 +118,9 @@ def _run_single_seed(cfg, seed, device, verbose=True):
         "S_X": len_x,
         "num_parameters_Y": int(y_out["num_parameters"]),
         "num_parameters_X": int(x_out["num_parameters"]),
+        "boundary": boundary,
+        "block_len_x": block_len_x,
+        "V_x": streams["V_x"],
     }
 
 
@@ -169,6 +178,9 @@ def run_config(cfg, device, verbose=True):
     return {
         "name": name,
         "M": cfg["M"], "K": cfg["K"], "W": cfg["W"], "alpha": cfg["alpha"],
+        "boundary": results_per_seed[0]["boundary"],
+        "block_len_x": results_per_seed[0]["block_len_x"],
+        "V_x": results_per_seed[0]["V_x"],
         "seeds": seeds,
         "ce_window": int(cfg["train"]["ce_window"]),
         "L_Y_star": L_Y_star,
@@ -237,6 +249,7 @@ def main():
         all_cfg_data.append({
             "name": res["name"],
             "M": res["M"], "K": res["K"], "W": res["W"], "alpha": res["alpha"],
+            "boundary": res["boundary"], "block_len_x": res["block_len_x"],
             "ce_window": res["ce_window"],
             "L_Y_star": res["L_Y_star"],
             "L_X_star": res["L_X_star"],

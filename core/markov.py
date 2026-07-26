@@ -162,7 +162,7 @@ def generate_markov_sequence(P, V_y, k, n, rng):
     return Y
 
 
-def fragment(Y, M):
+def fragment(Y, M, boundary_token=None):
     """Fragment each V_y-ary symbol into M binary tokens (MSB first).
 
     bit j of symbol y = (y >> (M - 1 - j)) & 1.
@@ -173,13 +173,25 @@ def fragment(Y, M):
         Symbols in {0, ..., 2**M - 1}.
     M : int
         Bits per symbol.
+    boundary_token : int or None, optional
+        If given, append this token after every block of M bits (i.e. at the
+        true end of every fragmented symbol), producing an unambiguous
+        marking of the block boundary. Default None reproduces the plain
+        M-bit-per-symbol fragmentation exactly.
 
     Returns
     -------
-    X : np.ndarray of shape (n * M,), int32
-        Binary tokens in {0, 1}.
+    X : np.ndarray of shape (n * M,), int32 (or (n * (M + 1),) if
+        `boundary_token` is given).
+        Binary tokens in {0, 1} (plus `boundary_token` at every block end).
     """
     Y = np.asarray(Y, dtype=np.int64)
     shifts = np.arange(M - 1, -1, -1, dtype=np.int64)
     bits = ((Y[:, None] >> shifts[None, :]) & 1).astype(np.int32)
-    return bits.reshape(-1)
+    if boundary_token is None:
+        return bits.reshape(-1)
+    n = Y.shape[0]
+    out = np.empty((n, M + 1), dtype=np.int32)
+    out[:, :M] = bits
+    out[:, M] = boundary_token
+    return out.reshape(-1)

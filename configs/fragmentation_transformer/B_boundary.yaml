@@ -1,0 +1,32 @@
+experiment: fragmentation_transformer
+theorem: "1"
+
+name: B_boundary
+M: 3
+K: 2
+W: 3
+boundary: true
+# Same source as config B, but X gets an explicit end-of-block token after
+# every M-bit block (vocab_size 3, effective X context (M+1)*W). Rebuttal
+# check: marking the true boundary removes phase ambiguity, so L_X* should
+# collapse toward L_Y* (gap -> ~0) instead of the phase-MI gap seen in B.
+alpha: 0.5
+n_sequence: 2000000
+seeds: [0, 1, 2]
+
+model:
+  n_layers: 4
+  d_embd: 256
+  d_ffn: 1024
+  n_heads: 4
+  init_std: 0.02
+
+train:
+  iterations: 20000
+  batch_size: 128
+  lr: 3.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  warmup_steps: 500
+  ce_window: 1000
+  grad_clip: 1.0

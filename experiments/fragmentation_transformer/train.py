@@ -156,14 +156,19 @@ def train_Y_model(streams, cfg, seed, device, progress_desc="Y-model"):
 
 
 def train_X_model(streams, cfg, seed, device, progress_desc="X-model"):
-    """Train the X-model: context M*W X-bits, predict next X-bit."""
-    M = cfg["M"]
+    """Train the X-model: context block_len_x*W X-tokens, predict next X-token.
+
+    `block_len_x` (M, or M+1 if `streams["boundary"]` is set) and `V_x` come
+    from `streams` (see `build_streams`) rather than being assumed here.
+    """
     W = cfg["W"]
+    block_len_x = streams["block_len_x"]
+    V_x = streams["V_x"]
     return _train_model(
         stream=streams["X"],
         iterations=int(cfg["train"]["iterations"]),
-        input_len=M * W,
-        vocab_size=2,
+        input_len=block_len_x * W,
+        vocab_size=V_x,
         cfg=cfg,
         seed=seed * 31337 + 2,
         device=device,
@@ -171,11 +176,12 @@ def train_X_model(streams, cfg, seed, device, progress_desc="X-model"):
     )
 
 
-def x_loss_to_per_Y_symbol(last_pos_loss_bits_x, M, n_Y):
-    """Sum M consecutive X-iteration last-position bit-losses into per-Y-symbol.
+def x_loss_to_per_Y_symbol(last_pos_loss_bits_x, block_len, n_Y):
+    """Sum block_len consecutive X-iteration last-position losses into per-Y-symbol.
 
-    Returns an array of length n_Y with
-        loss_X_per_Y_symbol[s] = sum_{j=0}^{M-1} last_pos_loss_bits_x[M*s + j]
-    using the first M*n_Y entries of `last_pos_loss_bits_x`.
+    `block_len` is the number of X tokens per Y symbol (M, or M+1 in
+    boundary mode). Returns an array of length n_Y with
+        loss_X_per_Y_symbol[s] = sum_{j=0}^{block_len-1} last_pos_loss_bits_x[block_len*s + j]
+    using the first block_len*n_Y entries of `last_pos_loss_bits_x`.
     """
-    return last_pos_loss_bits_x[: M * n_Y].reshape(n_Y, M).sum(axis=1)
+    return last_pos_loss_bits_x[: block_len * n_Y].reshape(n_Y, block_len).sum(axis=1)

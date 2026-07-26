@@ -65,6 +65,27 @@ Figures are written to `outputs/fragmentation_transformer/figures/`:
 - `main/fragmentation_transformer_final.{pdf,png}` — main paper figure
 - `appendix/fragmentation_transformer_final_grad.{pdf,png}` — gradient-norm appendix figure
 
+#### Optional: boundary-marked fragmentation (rebuttal check)
+
+A finite-context predictor cannot normally tell which phase (position within
+an M-block) it is in — that phase ambiguity is what Section 3 measures. To
+check that explicitly marking the true block boundary removes it, set
+`boundary: true` in a config (see `configs/fragmentation_transformer/B_boundary.yaml`):
+an end-of-block token (id 2, vocab_size becomes 3) is appended after every
+M-bit block, and the X-model's context window scales from `M*W` to `(M+1)*W`
+accordingly. Default is `boundary: false` (or the key omitted), which
+reproduces the original fragmentation exactly.
+
+```bash
+conda run -n bane python scripts/run_fragmentation_transformer.py \
+    configs/fragmentation_transformer/B_boundary.yaml
+```
+
+With boundary marking on, the phase-mutual-information term in the L_X*
+decomposition (`core/theory.py`) is exactly zero, so `L_X*` should collapse
+toward `L_Y*` (compare against the unmarked `configs/fragmentation_transformer/B.yaml`
+run for the same source).
+
 ### Section 3 — Fragmentation Terms Decomposition
 
 Measures the excess loss of an n-gram model that operates on fragments
