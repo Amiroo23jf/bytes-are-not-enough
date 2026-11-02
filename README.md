@@ -1,4 +1,4 @@
-# Effective Context in Transformers: An Analysis of Fragmentation and Tokenization
+# Representation in Finite-Context Prediction: An Analysis of Tokenization and Fragmentation
 
 Reproducibility code for the paper.
 
@@ -277,7 +277,7 @@ if ROOT not in sys.path:
 ## Assets and Licenses
 
 This repository contains code written by the authors for the experiments in
-"Effective Context in Transformers: An Analysis of Fragmentation and Tokenization."
+"Representation in Finite-Context Prediction: An Analysis of Tokenization and Fragmentation."
 
 Our code is released under the MIT License; see `LICENSE`.
 

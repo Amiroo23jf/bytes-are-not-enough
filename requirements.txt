@@ -1,4 +1,4 @@
-# Effective Context in Transformers -- pinned for a consistent PyTorch + NumPy stack.
+# Representation in Finite-Context Prediction -- pinned for a consistent PyTorch + NumPy stack.
 # Env: conda env create -f environment.yml && conda activate bane
 
 numpy>=1.26,<2.3
