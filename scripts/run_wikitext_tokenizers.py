@@ -20,6 +20,10 @@ Usage
   python scripts/run_wikitext_tokenizers.py
   python scripts/run_wikitext_tokenizers.py path/to/config.yaml
   python scripts/run_wikitext_tokenizers.py --smoke
+  python scripts/run_wikitext_tokenizers.py --tokenizer bert --tokenizer gpt2
+
+--tokenizer NAME (repeatable) recomputes only those tokenizers and updates
+their entries in an existing summary.json, leaving the others untouched.
 """
 
 import json
@@ -88,11 +92,16 @@ def _load_wikitext103(splits=("train", "validation", "test"), smoke=False):
     return train_text, full_text
 
 
-def run(cfg, smoke=False, verbose=True):
+def run(cfg, smoke=False, verbose=True, only=None):
     name = cfg["name"]
     W_list = [int(w) for w in cfg["W"]]
     splits = list(cfg.get("data", {}).get("splits", ["train", "validation", "test"]))
     tok_cfgs = cfg["tokenizers"]
+    if only:
+        unknown = set(only) - {t["name"] for t in tok_cfgs}
+        if unknown:
+            raise ValueError(f"Unknown tokenizer(s) {sorted(unknown)} for config {name!r}")
+        tok_cfgs = [t for t in tok_cfgs if t["name"] in only]
 
     os.makedirs(RESULTS_DIR, exist_ok=True)
     os.makedirs(ART_DIR, exist_ok=True)
@@ -179,8 +188,17 @@ def run(cfg, smoke=False, verbose=True):
             "mean_span": {w: float(ms) for w, (_, _, _, ms) in dist_results.items()},
         })
 
-    # Save summary JSON.
+    # Save summary JSON. With --tokenizer, merge into the existing summary,
+    # keeping the config's tokenizer order.
     summary_path = os.path.join(OUT_ROOT, "summary.json")
+    if only and os.path.exists(summary_path):
+        with open(summary_path) as f:
+            merged = {s["name"]: s for s in json.load(f)}
+        for s in merged.values():  # JSON stores the W keys as strings
+            s["mean_span"] = {int(w): v for w, v in s["mean_span"].items()}
+        merged.update({s["name"]: s for s in summary})
+        order = [t["name"] for t in cfg["tokenizers"]]
+        summary = [merged[n] for n in order if n in merged]
     with open(summary_path, "w") as f:
         json.dump(summary, f, indent=2)
     if verbose:
@@ -193,6 +211,13 @@ def main():
     args = sys.argv[1:]
     smoke = "--smoke" in args
     args = [a for a in args if a != "--smoke"]
+    only = []
+    while "--tokenizer" in args:
+        i = args.index("--tokenizer")
+        if i + 1 >= len(args):
+            raise SystemExit("--tokenizer needs a name")
+        only.append(args[i + 1])
+        del args[i : i + 2]
 
     cfg_path = args[0] if args else DEFAULT_CONFIG
     cfg = _load_cfg(cfg_path)
@@ -201,7 +226,7 @@ def main():
         cfg["W"] = [4, 8, 16]
 
     t_all = time.time()
-    summary = run(cfg, smoke=smoke, verbose=True)
+    summary = run(cfg, smoke=smoke, verbose=True, only=only or None)
 
     print("\n" + "=" * 72)
     print("Summary:")

@@ -6,7 +6,11 @@ All wrappers expose:
     .encode_with_char_lengths(text) -> (ids: int32 ndarray, char_lens: int32 ndarray)
 
 char_lens[i] is the number of Unicode characters in the original text that
-token i covers, derived from character-offset mapping where available.
+token i accounts for. For the offset-based wrappers (HFTokenizer,
+TransformersTokenizer) the lengths partition the text exactly, so
+char_lens.sum() == len(text): characters that no token's offset span covers
+(e.g. the whitespace that BertPreTokenizer drops) are assigned to the next
+token. See `_char_lens_from_offsets`.
 
 Factory
 -------
@@ -17,6 +21,54 @@ import os
 import tempfile
 
 import numpy as np
+
+
+def _char_lens_from_offsets(offsets, n_chars):
+    """Per-token character lengths that partition a chunk of `n_chars` chars.
+
+    Token i is assigned the characters after the previous token's end up to
+    its own end, i.e. (end_{i-1}, end_i]. Any characters skipped between
+    tokens (whitespace dropped by WordPiece/BERT pre-tokenization) therefore
+    count toward the following token, as GPT-2-style tokenizers do with their
+    leading-space tokens, and the last token also absorbs any trailing
+    characters. Ends are made non-decreasing first, so tokens sharing one
+    character (byte-level pieces of a multi-byte character) get length 0
+    after the first. Sum of the result is exactly `n_chars`.
+
+    Raw `end - start` would instead silently drop those skipped characters,
+    understating both the span of a token window and the character count used
+    to normalize loss to bits/char.
+    """
+    ends = np.fromiter((e for _, e in offsets), dtype=np.int64, count=len(offsets))
+    np.maximum.accumulate(ends, out=ends)
+    lens = np.diff(ends, prepend=0)
+    lens[-1] += n_chars - ends[-1]
+    return lens.astype(np.int32)
+
+
+def _encode_chunked(text, chunk_chars, encode_chunk):
+    """Encode `text` chunk by chunk with `encode_chunk(chunk) -> (ids, offsets)`.
+
+    Returns (ids, char_lens) with char_lens.sum() == len(text). A chunk that
+    produces no tokens (whitespace only) carries its characters over to the
+    next token.
+    """
+    ids_list, clens_list = [], []
+    carry = 0
+    for start in range(0, len(text), chunk_chars):
+        chunk = text[start : start + chunk_chars]
+        ids, offsets = encode_chunk(chunk)
+        if not len(ids):
+            carry += len(chunk)
+            continue
+        clens = _char_lens_from_offsets(offsets, len(chunk))
+        clens[0] += carry
+        carry = 0
+        ids_list.append(np.asarray(ids, dtype=np.int32))
+        clens_list.append(clens)
+    if carry and clens_list:
+        clens_list[-1][-1] += carry
+    return np.concatenate(ids_list), np.concatenate(clens_list)
 
 # ---------------------------------------------------------------------------
 # Character tokenizer
@@ -60,15 +112,11 @@ class HFTokenizer:
 
     def encode_with_char_lengths(self, text, chunk_chars=100_000):
         # Encode in chunks so enc.ids never becomes a multi-GB Python list.
-        ids_list, clens_list = [], []
-        for start in range(0, len(text), chunk_chars):
-            enc = self._tok.encode(text[start : start + chunk_chars])
-            if enc.ids:
-                ids_list.append(np.array(enc.ids, dtype=np.int32))
-                clens_list.append(
-                    np.array([e - s for s, e in enc.offsets], dtype=np.int32)
-                )
-        return np.concatenate(ids_list), np.concatenate(clens_list)
+        def encode_chunk(chunk):
+            enc = self._tok.encode(chunk)
+            return enc.ids, enc.offsets
+
+        return _encode_chunked(text, chunk_chars, encode_chunk)
 
     @classmethod
     def train_bpe(cls, name, lines, vocab_size):
@@ -182,18 +230,10 @@ class TransformersTokenizer:
             add_special_tokens=False,
             truncation=False,
         )
-        ids = np.array(enc["input_ids"], dtype=np.int32)
-        clens = np.array([e - s for s, e in enc["offset_mapping"]], dtype=np.int32)
-        return ids, clens
+        return enc["input_ids"], enc["offset_mapping"]
 
     def encode_with_char_lengths(self, text):
-        ids_list, clens_list = [], []
-        for start in range(0, len(text), _CHUNK_CHARS):
-            ids, clens = self._encode_chunk(text[start : start + _CHUNK_CHARS])
-            if len(ids):
-                ids_list.append(ids)
-                clens_list.append(clens)
-        return np.concatenate(ids_list), np.concatenate(clens_list)
+        return _encode_chunked(text, _CHUNK_CHARS, self._encode_chunk)
 
     @classmethod
     def from_pretrained(cls, name, model_name):

@@ -235,7 +235,9 @@ def stage_plot(cfg):
             # -- w_s is read from the cached result below (computed once,
             # at train time).
             w = int(window_cfg["w"])
-        elif name in prior_w:
+        elif name in prior_w and os.path.exists(_result_path(name, prior_w[name])):
+            # Ignore a prior w whose result no longer exists (e.g. it was
+            # deleted to retrain after re-preparing that tokenizer's data).
             w = prior_w[name]
         else:
             data_dir = os.path.join(DATA_ROOT, name)

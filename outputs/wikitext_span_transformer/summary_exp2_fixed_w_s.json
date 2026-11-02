@@ -31,9 +31,9 @@
   },
   {
     "name": "wordpiece_32k",
-    "w": 52,
+    "w": 40,
     "w_s": 128.0,
-    "test_loss_bits_per_char": 1.7193168052725696
+    "test_loss_bits_per_char": 1.429979767676179
   },
   {
     "name": "sentencepiece_32k",
@@ -43,9 +43,9 @@
   },
   {
     "name": "bert",
-    "w": 50,
+    "w": 39,
     "w_s": 128.0,
-    "test_loss_bits_per_char": 1.710998427533947
+    "test_loss_bits_per_char": 1.4186625175380483
   },
   {
     "name": "gpt2",
