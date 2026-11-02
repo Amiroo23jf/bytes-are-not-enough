@@ -48,22 +48,9 @@ outputs/**/run-*.log
 *.slurm.err
 
 # --- Outputs ---------------------------------------------------------------
-# All current paper artifacts under outputs/ are TRACKED for now:
-#   - outputs/fragmentation_ngram/{raw,figures}/...    (~3 MB)
-#   - outputs/fragmentation_transformer/{logs,figures,summary.json}  (~22 MB)
-# The .npz per-seed training logs are 200-300 KB each, so keeping them lets
-# `scripts/plot_fragmentation_transformer.py` regenerate every figure family
-# without retraining.
-#
-# When the compression_benchmarks experiment lands it will produce large
-# binary payloads (compressed files, model checkpoints, audio/image dumps)
-# that are NOT worth carrying in git. Add ignore rules HERE at that point,
-# e.g.:
-#     outputs/compression_benchmarks/raw/**
-#     outputs/compression_benchmarks/checkpoints/**
-#     *.compressed
-#     *.bin.gz
-# Until then, leave outputs/ tracked as-is.
+# Paper artifacts under outputs/ (figures, summaries, small result files) are
+# tracked. Note that the `logs/` rule above also matches outputs/*/logs/, so
+# per-seed training logs there are not tracked.
 
 # --- Misc scratch ----------------------------------------------------------
 outputs/scratch/

@@ -21,16 +21,15 @@ which is compatible with CUDA 12.8 through 13.x.
 ```bash
 conda create -n bane python=3.11 -y
 conda activate bane
-pip install torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0 \
-    --index-url https://download.pytorch.org/whl/cu128
+pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
 pip install -r requirements.txt
 ```
 
 ### CPU-only machine
 
 Remove the `--extra-index-url` line from `environment.yml` and replace
-the pinned `torch==2.11.0` / `torchvision` / `torchaudio` lines in
-`requirements.txt` with their plain PyPI versions, then run
+the pinned `torch==2.11.0` line in `requirements.txt` with its plain PyPI
+version, then run
 `conda env create -f environment.yml`.
 
 ### Verify
@@ -237,9 +236,6 @@ tokenizer/            Tokenizer registry: bit_fragment (Theorem 1) and
                       bpe (Theorem 3, greedy/priority encoders).
                       Singular to avoid clashing with HuggingFace's
                       `tokenizers` package on import.
-representations/      Decoder + (optional) tokenizer pipeline; turns raw
-                      bytes from text/audio/image files into a token id
-                      stream for the compression benchmarks.
 datasets/             Modality-specific loaders.
 experiments/<name>/   One package per experiment family.
 configs/<name>/       YAML configs, one file per run variant.

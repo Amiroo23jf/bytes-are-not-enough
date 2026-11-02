@@ -2,8 +2,8 @@
 
 A tokenizer maps a sequence of source symbols to a sequence of token ids over
 a (possibly different) vocabulary. The protocol is intentionally minimal so
-that future experiments (Theorem 3, compression benchmarks) can plug new
-tokenizers in by adding a single module + one registry entry.
+that new tokenizers can be plugged in by adding a single module + one
+registry entry.
 
 Protocol expected of each tokenizer:
     .vocab_size : int                       # size of the output alphabet

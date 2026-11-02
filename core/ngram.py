@@ -1,8 +1,8 @@
 """Vectorized Laplace-smoothed n-gram cross-entropy estimator.
 
 Used as the workhorse predictor for the fragmentation_ngram experiment, and
-as a baseline that other experiments (tokenization_transformer,
-compression_benchmarks) can call without depending on any experiment package.
+as a baseline that other experiments can call without depending on any
+experiment package.
 
 All cross-entropies are returned in bits per token (log base 2).
 """

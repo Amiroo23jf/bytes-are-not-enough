@@ -1,11 +1,8 @@
-# Bytes are not enough — pinned for a consistent PyTorch + NumPy stack.
+# Effective Context in Transformers -- pinned for a consistent PyTorch + NumPy stack.
 # Env: conda env create -f environment.yml && conda activate bane
-#
-# If you still see conflicts, you may have leftover packages from other projects.
-# For example, scalib 0.6.x requires numpy 1.21.x; uninstall it if you do not need it:
-#   pip uninstall -y scalib
 
 numpy>=1.26,<2.3
+numba>=0.59
 matplotlib>=3.7,<4
 pyyaml>=6.0,<7
 pandas>=2.0,<3
@@ -13,16 +10,8 @@ tqdm>=4.60,<5
 # PyTorch: installed via environment.yml (needs --extra-index-url for CUDA wheels).
 # For a manual install: pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
 torch==2.11.0
-torchvision==0.26.0
-torchaudio==2.11.0
 tokenizers>=0.15,<1
 sentencepiece>=0.2,<1
 datasets>=2.0,<4
 transformers>=4.40,<5
 pytest>=7.0,<10
-
-# Co-installed tools often found in scientific envs (silences pip resolver warnings)
-pexpect>=4.8
-oauthlib>=3.2
-numba>=0.59
-psutil>=5.9
