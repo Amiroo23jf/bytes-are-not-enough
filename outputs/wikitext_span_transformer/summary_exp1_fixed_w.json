@@ -1,0 +1,56 @@
+[
+  {
+    "name": "char",
+    "w": 128,
+    "w_s": 128.0,
+    "test_loss_bits_per_char": 1.7457890608905553
+  },
+  {
+    "name": "bpe_1k",
+    "w": 128,
+    "w_s": 262.6510514202652,
+    "test_loss_bits_per_char": 1.539660145107459
+  },
+  {
+    "name": "bpe_4k",
+    "w": 128,
+    "w_s": 328.37576431793286,
+    "test_loss_bits_per_char": 1.4131331320838312
+  },
+  {
+    "name": "bpe_16k",
+    "w": 128,
+    "w_s": 407.0469092224279,
+    "test_loss_bits_per_char": 1.2992272479952214
+  },
+  {
+    "name": "bpe_32k",
+    "w": 128,
+    "w_s": 442.13724338823016,
+    "test_loss_bits_per_char": 1.2695340265185193
+  },
+  {
+    "name": "wordpiece_32k",
+    "w": 128,
+    "w_s": 345.1702081650377,
+    "test_loss_bits_per_char": 1.5720915897157826
+  },
+  {
+    "name": "sentencepiece_32k",
+    "w": 128,
+    "w_s": 480.03084906944224,
+    "test_loss_bits_per_char": 1.2661778145235625
+  },
+  {
+    "name": "bert",
+    "w": 128,
+    "w_s": 359.48259527734,
+    "test_loss_bits_per_char": 1.5569301993774807
+  },
+  {
+    "name": "gpt2",
+    "w": 128,
+    "w_s": 427.7784303661409,
+    "test_loss_bits_per_char": 1.2753496608596846
+  }
+]

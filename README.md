@@ -140,6 +140,74 @@ conda run -n bane python scripts/plot_wikitext_tokenizers.py
 
 Figures are written to `outputs/wikitext_tokenizers/figures/cdf_W{w}.{pdf,png}`.
 
+### WikiText-103 Span-Matched Transformer
+
+Trains a transformer LM on WikiText-103 with each of the nine tokenizers above
+and reports held-out test loss in bits per character. Two experiments:
+
+- **Exp 1 — fixed token window** (`exp1.yaml`): every tokenizer uses
+  `w = 128` tokens. Reports the character span `w_s` the window covers at
+  slack `ε = 0.05`, and the test loss.
+- **Exp 2 — fixed character span** (`exp2.yaml`): for each tokenizer, solves
+  for the token window `w` that covers the target span `w_s = 128` at slack
+  `ε = 0.05` (`solve_w_for_target_span` in
+  `experiments/wikitext_span_transformer/data.py`), then trains with that `w`.
+  The character tokenizer always gets `w = 128`, so it reuses its Exp 1 run.
+- **Optional — `w_s = 300`** (`exp2_ws300.yaml`): the same as Exp 2 with a
+  larger target span, included as an extra check.
+
+Each run has three stages: `prepare` (CPU: build/load the tokenizer, encode
+the train/validation/test splits), `train` (GPU: train and evaluate) and
+`plot`. Under SLURM, one script submits all of Exp 1 and Exp 2 as a job graph
+(9 prepare jobs, 18 train jobs, 2 plot jobs):
+
+```bash
+bash slurm/submit_wikitext_span_transformer.sh
+```
+
+Without SLURM, run the stages directly (omitting `--tokenizer` processes
+every tokenizer in the config sequentially):
+
+```bash
+# Prepare data once; it is shared by all three configs
+conda run -n bane python scripts/run_wikitext_span_transformer.py \
+    configs/wikitext_span_transformer/exp1.yaml --stage prepare [--tokenizer NAME]
+
+# Train + evaluate, then plot (repeat for exp2.yaml and exp2_ws300.yaml)
+conda run -n bane python scripts/run_wikitext_span_transformer.py \
+    configs/wikitext_span_transformer/exp1.yaml --stage train [--tokenizer NAME]
+conda run -n bane python scripts/run_wikitext_span_transformer.py \
+    configs/wikitext_span_transformer/exp1.yaml --stage plot
+
+# Slack / ε curves of each tokenizer at its Exp 2 window
+conda run -n bane python scripts/plot_wikitext_span_slack_curves.py
+conda run -n bane python scripts/plot_wikitext_span_slack_curves.py \
+    --full-range --file-stem wikitext_span_slack_curves_full
+conda run -n bane python scripts/plot_wikitext_span_slack_curves.py \
+    --epsilon --file-stem wikitext_span_epsilon_curves
+```
+
+The trained tokenizers (`artifacts/`), per-run results
+(`results/<tokenizer>/w<W>.npz`: training curve and test loss), summaries and
+the slack-curve cache are committed. The `plot` stage and the slack-curve
+script therefore regenerate every figure without the tokenized data or any
+retraining. Notes for a rerun:
+
+- `prepare` loads the committed tokenizer files from `artifacts/` instead of
+  retraining them, so encodings match the paper's runs. The tokenized corpus
+  (`data/`, ~3.4 GB) is not committed.
+- `train` skips any (tokenizer, w) pair whose `results/<tokenizer>/w<W>.npz`
+  already exists. Delete that file to retrain it.
+
+Outputs in `outputs/wikitext_span_transformer/`:
+- `summary_{exp1_fixed_w,exp2_fixed_w_s,exp2_ws300}.json` — `w`, `w_s` and
+  test loss (bits/char) per tokenizer
+- `figures/wikitext_span_exp1_fixed_w.{pdf,png}` — test loss vs. measured span
+- `figures/wikitext_span_{exp2_fixed_w_s,exp2_ws300}.{pdf,png}` — test loss per
+  tokenizer, annotated with its solved `w`
+- `figures/wikitext_span_*_training.{pdf,png}` — training curves vs. characters seen
+- `figures/wikitext_span_{slack_curves,slack_curves_full,epsilon_curves}.{pdf,png}`
+
 ### Markov Tokenizer Span Analysis
 
 Same span-distribution analysis as above, but on a synthetic binary Markov-K
@@ -177,7 +245,9 @@ experiments/<name>/   One package per experiment family.
 configs/<name>/       YAML configs, one file per run variant.
 scripts/              Thin CLI entry points (sys.path -> repo root).
 slurm/                SLURM batch scripts.
-outputs/<name>/       All generated artifacts for that experiment family.
+outputs/<name>/       All generated artifacts for that experiment family
+                      (large regenerable intermediates, e.g.
+                      outputs/wikitext_span_transformer/data/, are gitignored).
 logs/                 SLURM stdout / stderr.
 ```
 

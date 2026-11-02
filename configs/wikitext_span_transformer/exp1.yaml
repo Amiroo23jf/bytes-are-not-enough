@@ -1,0 +1,49 @@
+# wikitext_span_transformer -- Experiment 1: fixed token window w.
+#
+# Same w=128 (tokens) for every tokenizer. For each, this measures the
+# character span w_s the window covers at slack=0.05 (see data.py's span
+# machinery, reused from wikitext_tokenizers), then trains + evaluates an
+# end-to-end transformer LM with that context length. Checks whether
+# tokenizers with a larger span (more compression) show a higher held-out
+# loss than tokenizers with a smaller span, at the same token budget.
+
+experiment: wikitext_span_transformer
+name: exp1_fixed_w
+
+window:
+  mode: fixed_w
+  w: 128
+  slack: 0.05   # only used to report the measured w_s for the fixed w, not to solve anything here
+
+tokenizers:
+  - {name: char,              type: character}
+  - {name: bpe_1k,            type: bpe,           vocab_size: 1000}
+  - {name: bpe_4k,            type: bpe,           vocab_size: 4000}
+  - {name: bpe_16k,           type: bpe,           vocab_size: 16000}
+  - {name: bpe_32k,           type: bpe,           vocab_size: 32000}
+  - {name: wordpiece_32k,     type: wordpiece,     vocab_size: 32000}
+  - {name: sentencepiece_32k, type: sentencepiece, vocab_size: 32000}
+  - {name: bert,              type: pretrained,    model: bert-base-uncased}
+  - {name: gpt2,              type: pretrained,    model: gpt2}
+
+seeds: [0]
+
+train:
+  batch_size: 128
+  epochs: 1            # bounded single pass by default; raise for literal multi-epoch cycling
+  iterations: 20000     # per epoch; capped to whatever the corpus actually supports
+  lr: 3.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  warmup_steps: 500
+  ce_window: 500
+  grad_clip: 1.0
+  amp_dtype: bfloat16   # needed for memory headroom + speed at these vocab sizes
+  eval_batch_size: 256
+
+model:
+  n_layers: 4
+  d_embd: 256
+  d_ffn: 1024
+  n_heads: 4
+  init_std: 0.02

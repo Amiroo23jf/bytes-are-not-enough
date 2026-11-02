@@ -1,0 +1,53 @@
+# wikitext_span_transformer -- Experiment 2 variant: fixed target character
+# span w_s=300 (chars), instead of the original w_s=128.
+#
+# Same mechanism as exp2.yaml, larger target span: solves per-tokenizer for
+# the token window w that reaches 300 chars at slack=0.05, trains + evaluates
+# with that context length. Follow-up check: does a bigger shared span make
+# the loss spread across tokenizers tighter than at w_s=128?
+#
+# Unlike exp2.yaml, `char`'s solved w (= w_s = 300) now EXCEEDS the w=128
+# used everywhere else in this study, so it can no longer reuse a cached
+# result from Exp 1 or the w_s=128 run -- every tokenizer here, including
+# char, needs a fresh training run.
+
+experiment: wikitext_span_transformer
+name: exp2_ws300
+
+window:
+  mode: fixed_w_s
+  w_s: 300
+  slack: 0.05
+
+tokenizers:
+  - {name: char,              type: character}
+  - {name: bpe_1k,            type: bpe,           vocab_size: 1000}
+  - {name: bpe_4k,            type: bpe,           vocab_size: 4000}
+  - {name: bpe_16k,           type: bpe,           vocab_size: 16000}
+  - {name: bpe_32k,           type: bpe,           vocab_size: 32000}
+  - {name: wordpiece_32k,     type: wordpiece,     vocab_size: 32000}
+  - {name: sentencepiece_32k, type: sentencepiece, vocab_size: 32000}
+  - {name: bert,              type: pretrained,    model: bert-base-uncased}
+  - {name: gpt2,              type: pretrained,    model: gpt2}
+
+seeds: [0]
+
+train:
+  batch_size: 128
+  epochs: 1
+  iterations: 20000
+  lr: 3.0e-4
+  weight_decay: 0.01
+  betas: [0.9, 0.95]
+  warmup_steps: 500
+  ce_window: 500
+  grad_clip: 1.0
+  amp_dtype: bfloat16
+  eval_batch_size: 256
+
+model:
+  n_layers: 4
+  d_embd: 256
+  d_ffn: 1024
+  n_heads: 4
+  init_std: 0.02
